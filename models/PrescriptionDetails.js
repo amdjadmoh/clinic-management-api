@@ -49,7 +49,8 @@ const PrescriptionTemplate = db.define('prescriptionTemplate',{
         allowNull:false,
     }
 },{
-    tableName:'prescriptionTemplates'
+    tableName:'prescriptionTemplates',
+    timestamps:false
 });
 const PrescriptionTemplateDetails = db.define('prescriptionTemplateDetails',{
     templateID:{
@@ -89,7 +90,8 @@ const PrescriptionTemplateDetails = db.define('prescriptionTemplateDetails',{
         allowNull:true,
     }
 },{
-    tableName:'prescriptionTemplateDetails'
+    tableName:'prescriptionTemplateDetails',
+    timestamps:false,
 });
 
 PrescriptionTemplate.hasMany(PrescriptionTemplateDetails,{foreignKey:'templateID'});

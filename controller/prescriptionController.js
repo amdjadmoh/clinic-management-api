@@ -214,6 +214,25 @@ exports.getAllPrescriptionTemplates = catchAsync(async (req, res, next) => {
         },
     });
 });
+
+// Get a single prescription template by ID
+exports.getPrescriptionTemplate = catchAsync(async (req, res, next) => {
+    const template = await PrescriptionTemplate.findByPk(req.params.id);
+    if (!template) {
+        return next(new AppError('Prescription template not found', 404));
+    }
+    const templateDetails = await PrescriptionTemplateDetails.findAll({
+        where:{templateID:template.id}
+    });
+    prescriptionTemp={...template.get({plain:true}),templateDetails};
+    res.status(200).json({
+        status: 'success',
+        data: {
+            prescriptionTemp
+        },
+    });
+});
+
 exports.getPrescriptionTemplateDetails = catchAsync(async (req, res, next) => {
     const templateDetails = await PrescriptionTemplateDetails.findAll({
         where:{templateID:req.params.templateID}
@@ -249,6 +268,13 @@ exports.deletePrescriptionTemplate = catchAsync(async (req, res, next) => {
     if (!template) {
         return next(new AppError('Prescription template not found', 404));
     }
+    const associatedDetails = await PrescriptionTemplateDetails.findAll({
+        where: { templateID: template.id },
+    });
+    // Delete associated details first
+    for (const detail of associatedDetails) {
+        await detail.destroy();
+    }
     await template.destroy();
     res.status(200).json({
         status: 'success',
@@ -258,12 +284,26 @@ exports.deletePrescriptionTemplate = catchAsync(async (req, res, next) => {
 exports.deletePrescriptionTemplateDetails = catchAsync(async (req, res, next) => {
     await PrescriptionTemplateDetails.destroy({
         where: {
-            templateID: req.params.templateID,
+            id: req.params.detailID,
         },
     });
     res.status(200).json({
         status: 'success',
         data: null,
+    });
+});
+
+exports.updateTemplatePrescriptionDetail = catchAsync(async (req, res, next) => {
+    const templateDetail = await PrescriptionTemplateDetails.findByPk(req.params.detailID);
+    if (!templateDetail) {
+        return next(new AppError('Prescription template detail not found', 404));
+    }
+    await templateDetail.update(req.body);
+    res.status(200).json({
+        status: 'success',
+        data: {
+            templateDetail,
+        },
     });
 });
 
@@ -301,7 +341,7 @@ exports.createPrescriptionFromTemplate = catchAsync(async (req, res, next) => {
         return next(new AppError('Doctor not found', 404));
     }
     const templateDetails = await PrescriptionTemplateDetails.findAll({
-        where: { templateID: req.body.templateID }
+        where: { templateID: req.params.templateID },
     });
     req.body = { ...req.body, doctorID: doctor.id, name: doctor.name, speciality: doctor.speciality };
     const prescription = await Prescription.create(req.body);
