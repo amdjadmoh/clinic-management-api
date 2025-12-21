@@ -1,0 +1,228 @@
+{
+  "info": {
+    "name": "Clinic API - Procedures Requests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Procedures Requests",
+      "item": [
+        {
+          "name": "Get All Procedures Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "localhost:8080/proceduresRequest",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest"]
+            }
+          }
+        },
+        {
+          "name": "Create Procedures Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"PatientID\": 1,\n  \"PatientName\": \"John Doe\",\n  \"status\": \"Pending\"\n}"
+            },
+            "url": {
+              "raw": "localhost:8080/proceduresRequest",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest"]
+            }
+          }
+        },
+        {
+          "name": "Get Procedures Request by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "localhost:8080/proceduresRequest/:id",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Procedures Request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"PatientName\": \"Jane Doe\",\n  \"status\": \"Completed\"\n}"
+            },
+            "url": {
+              "raw": "localhost:8080/proceduresRequest/:id",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Procedures Request",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "localhost:8080/proceduresRequest/:id",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Confirm Procedures Request",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "localhost:8080/proceduresRequest/:id/confirm",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest", ":id", "confirm"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Procedures Requests by Patient ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "localhost:8080/proceduresRequest/patient/:patientID",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest", "patient", ":patientID"],
+              "variable": [
+                {
+                  "key": "patientID",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Procedures Request Items",
+      "item": [
+        {
+          "name": "Create Procedures Request Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proceduresRequestID\": 1,\n  \"preDefinedProcedureID\": 1\n}"
+            },
+            "url": {
+              "raw": "localhost:8080/proceduresRequest/items",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest", "items"]
+            }
+          }
+        },
+        {
+          "name": "Delete Procedures Request Item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "localhost:8080/proceduresRequest/items/:id",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["proceduresRequest", "items", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

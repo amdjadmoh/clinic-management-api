@@ -17,6 +17,7 @@ const prescriptionTemplateDetailsRoutes = require('./routes/prescriptionTemplate
 const globalErrorHandler = require('./controller/errorController');
 const ChronicDiseasesRoutes = require('./routes/chronicDiseases');
 const PreDefinedProcedureRoutes = require('./routes/PreDefinedProcedure');
+const proceduresRequestRoutes = require('./routes/proceduresRequest');
 const InvoiceRoutes = require('./routes/Invoice');
 const ProcedureRoutes = require('./routes/patientProcedure');
 const app = express();
@@ -69,7 +70,8 @@ app.use('/prescriptionDetails',prescriptionDetailsRoutes);
 app.use('/prescriptionTemplate', prescriptionTemplateRoutes);
 app.use('/prescriptionTemplateDetails', prescriptionTemplateDetailsRoutes);
 app.use('/chronicDiseases', ChronicDiseasesRoutes);
-app.use('/preDefinedProcedure', PreDefinedProcedureRoutes);  
+app.use('/preDefinedProcedure', PreDefinedProcedureRoutes);
+app.use('/proceduresRequest', proceduresRequestRoutes);
 app.use('/invoices', InvoiceRoutes);
 app.use('/procedure',ProcedureRoutes);
 app.use('/resultType',require('./routes/resultType'));

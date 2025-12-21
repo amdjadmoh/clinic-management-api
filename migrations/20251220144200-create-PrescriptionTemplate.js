@@ -15,9 +15,8 @@ module.exports = {
               allowNull:false,
           }
     },{
-        tableName:'prescriptionTemplates',
-        timestamps:true,
-    });  
+        tableName:'prescriptionTemplates'
+        });  
     await queryInterface.createTable('prescriptionTemplateDetails', {
       id : {
           type:sequelize.INTEGER,
@@ -61,9 +60,7 @@ module.exports = {
               allowNull:true,
           },
     },{
-        tableName:'prescriptionTemplateDetails',
-        timestamps:true,
-    }); 
+        tableName:'prescriptionTemplateDetails',    }); 
   },
 
   async down (queryInterface, Sequelize) {
