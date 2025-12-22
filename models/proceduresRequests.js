@@ -20,7 +20,15 @@ const ProceduresRequest = db.define('proceduresRequest', {
     },
     PatientName: {
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
+    },
+    gender:{
+        type: Sequelize.STRING,
+        allowNull: true,
+    },
+    birthdate:{
+        type: Sequelize.DATE,
+        allowNull: true,
     },
     status: {
         type: Sequelize.ENUM,

@@ -1,5 +1,6 @@
 const db= require('../config/database');
-const sequelize = require('sequelize');7
+const sequelize = require('sequelize');
+const {Doctors} = require('./Doctors');7
 
 const PrescriptionDetails = db.define('prescriptionDetails',{
     prescriptionID:{
@@ -47,6 +48,14 @@ const PrescriptionTemplate = db.define('prescriptionTemplate',{
     templateName:{
         type:sequelize.STRING,
         allowNull:false,
+    },
+    doctorID:{
+        type:sequelize.INTEGER,
+        allowNull:false,
+        references:{
+            model:'doctors',
+            key:'id',
+        }
     }
 },{
     tableName:'prescriptionTemplates',
@@ -96,6 +105,9 @@ const PrescriptionTemplateDetails = db.define('prescriptionTemplateDetails',{
 
 PrescriptionTemplate.hasMany(PrescriptionTemplateDetails,{foreignKey:'templateID'});
 PrescriptionTemplateDetails.belongsTo(PrescriptionTemplate,{foreignKey:'templateID'});
+
+Doctors.hasMany(PrescriptionTemplate, {foreignKey: 'doctorID'});
+PrescriptionTemplate.belongsTo(Doctors, {foreignKey: 'doctorID'});
 
 
 module.exports = {PrescriptionDetails,PrescriptionTemplate,PrescriptionTemplateDetails};

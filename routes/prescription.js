@@ -21,6 +21,6 @@ router
     .route('/doctor/:doctorID')
     .get(prescriptionController.getPrescriptionsByDoctor);
 router
-    .route('/template/:templateID')
+    .route('/template/:doctorID/:templateID')
     .post(prescriptionController.createPrescriptionFromTemplate);
 module.exports = router;

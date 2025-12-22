@@ -13,7 +13,18 @@ module.exports = {
        templateName:{
               type:sequelize.STRING,
               allowNull:false,
-          }
+          },
+            doctorID:{
+                type:sequelize.INTEGER,
+                allowNull:false,
+                references:{
+                    model:'doctors',
+                    key:'id',
+                },
+                onUpdate:'CASCADE',
+                onDelete:'CASCADE',
+            }
+
     },{
         tableName:'prescriptionTemplates'
         });  
