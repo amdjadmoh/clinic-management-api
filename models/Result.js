@@ -41,11 +41,31 @@ const Result = db.define('Result', {
             key: 'id',
         }   
     },
+    accessToken: {
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4,
+        unique: true,
+        allowNull: false
+    },
+    tokenExpiresAt: {
+        type: Sequelize.DATE,
+        allowNull: true,
+        comment: 'Token expiration date. Null means never expires'
+    },
 }
 ,
 {
     tableName:'results',
     timestamps:true,
+    hooks: {
+        beforeCreate: (result) => {
+            if (!result.tokenExpiresAt) {
+                const expiryDate = new Date();
+                expiryDate.setMonth(expiryDate.getMonth() + 1);
+                result.tokenExpiresAt = expiryDate;
+            }
+        }
+    }
 });
 Result.belongsTo(Patient, { foreignKey: 'patientID' });
 Patient.hasMany(Result, { foreignKey: 'patientID' });
