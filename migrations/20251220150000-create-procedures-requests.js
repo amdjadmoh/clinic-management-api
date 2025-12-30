@@ -49,6 +49,10 @@ module.exports = {
           allowNull: false,
           defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
         },
+        completeDate: {
+          type: Sequelize.DATE,
+          allowNull: true,
+        },
       },
       {
         tableName: "proceduresrequests",
@@ -90,7 +94,14 @@ module.exports = {
           type: Sequelize.DATE,
           allowNull: false,
           defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
-        },
+        },quantity:{
+                type:Sequelize.INTEGER,
+                allowNull:false,
+            },
+            note:{
+                type:Sequelize.TEXT,
+                allowNull:true
+            }
       },
       {
         tableName: "proceduresrequestitems",

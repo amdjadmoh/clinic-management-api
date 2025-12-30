@@ -8,7 +8,7 @@ const Users= require('./models/Users');
 const Appointment = require('./models/Appointment');
 const MedicalRecord = require('./models/MedicalRecord');
 const Prescription = require('./models/Prescription');
-const PrescriptionDetails = require('./models/PrescriptionDetails');
+const {PrescriptionDetails,PrescriptionTemplate,PrescriptionTemplateDetails} = require('./models/PrescriptionDetails');
 const Medicine = require('./models/Medicine');
 const PreDefinedProcedure = require('./models/PreDefinedProcedure');
 const ChronicDisease = require('./models/ChronicDisease');
@@ -36,6 +36,8 @@ const File = require('./models/Files');
 const Notification = require('./models/Notification');
 const BloodTest = require('./models/BloodTest');
 const LaboPrices = require('./models/LaboPrices');
+const {ProceduresRequest, ProceduresRequestItems} = require('./models/proceduresRequests');
+
 
 
 // Modify your sync code
@@ -45,7 +47,7 @@ const LaboPrices = require('./models/LaboPrices');
         
         // Then sync models
         await db.sync({ 
-            alter: true,
+            alter: true
         });
         
         console.log('All models were synchronized successfully.');

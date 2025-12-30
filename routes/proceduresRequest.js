@@ -11,6 +11,10 @@ router
 .route('/pending')
 .get(proceduresRequestController.getPendingProceduresRequests);
 router
+.route('/CompletedInPeriod')
+.get(proceduresRequestController.getCompletedRequestsInPeriod );    
+
+router
     .route('/:id')
     .get(proceduresRequestController.getProceduresRequest)
     .patch(proceduresRequestController.updateProceduresRequest)

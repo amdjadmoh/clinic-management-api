@@ -51,11 +51,14 @@ const Consent_certificate = db.define('consent_certificate', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+      text: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    }
 },{
     timestamps:true,
     hooks :{
         beforeValidate: async (consent_certificate) => {
-            console.log("Here");
             const currentYear = new Date().getFullYear() ;
             const lastId = await Consent_certificate.findOne({
                 where : {
@@ -353,15 +356,314 @@ const BirthDeclaration = db.define('BirthDeclaration', {
     }
 });
 
+const BirthCertificate = db.define('birth_certificate', {
+    id: {
+        type: DataTypes.STRING,
+        primaryKey: true,
+        allowNull: false
+    },
+    referenceDate: {
+        type: DataTypes.DATE,
+        allowNull: false
+    },
+    doctorName: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    motherFullName: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    motherBirthDate: {
+        type: DataTypes.DATE,
+        allowNull: false
+    },
+    motherPlaceOfBirth: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    residence: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    spouseFirstName: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    spouseLastName: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    spouseBirthDate: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    spousePlaceOfBirth: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    deliveryDate: {
+        type: DataTypes.DATE,
+        allowNull: false
+    },
+    deliveryTime: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    babyGender: {
+        type: DataTypes.ENUM('ذكر', 'انثى'),
+        allowNull: false
+    },
+    babyWeight: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        comment: 'Weight in grams'
+    },
+    babyName: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    latinLastName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'nom'
+    },
+    latinFirstName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        field: 'prenoms'
+    }
+}, {
+    tableName: 'birth_certificates',
+    timestamps: true,
+    hooks: {
+        beforeValidate: async (birthCertificate) => {
+            const currentYear = new Date().getFullYear();
+            const lastId = await BirthCertificate.findOne({
+                where: {
+                    id: {
+                        [Op.like]: `${currentYear}%`
+                    }
+                },
+                order: [['createdAt', 'DESC']]
+            });
+            let newId;
+            if (lastId) {
+                const lastIdNumber = parseInt(lastId.id.split('/')[1]);
+                const newIdNumber = lastIdNumber + 1;
+                newId = `${currentYear}/${newIdNumber}`;
+            } else {
+                newId = `${currentYear}/1`;
+            }
+            birthCertificate.id = newId;
+        }
+    }
+});
+
+const DeathDeclaration = db.define('death_declaration', {
+    id: {
+        type: DataTypes.STRING,
+        primaryKey: true,
+        allowNull: false
+    },
+    fullName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        comment: 'الاسم و اللقب'
+    },
+    address: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'العنوان'
+    },
+    year: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'سنة'
+    },
+    month: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'شهر'
+    },
+    day: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'في'
+    },
+    sectorManager: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'مدير القطاع الصحي'
+    },
+    daira: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'لدائرة'
+    },
+    civilStatusOfficer: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'ضابط الحالة المدنية للبلدية'
+    },
+    deceasedName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'المسمى(ة)'
+    },
+    ageAtDeath: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'العمر'
+    },
+    placeOfBirth: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'المولود(ة) في'
+    },
+    dateOfBirth: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'تاريخ الميلاد'
+    },  
+    stateOfBirth: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'ولاية'
+    },
+    sonOf:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    entryDate: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'دخل (ت) القطاع الصحي في'
+    },
+    dateOfDeath: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'تاريخ الوفاة'
+    },
+    hourOfDeath: {
+        type:DataTypes.STRING,
+        allowNull: true,
+        comment: 'توفي (ت) في'
+    },
+    causeOfDeath: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'على اثر'
+    }
+}, {
+    timestamps: true,
+    tableName: 'death_declarations',
+    hooks: {
+        beforeValidate: async (deathDeclaration) => {
+            const currentYear = new Date().getFullYear();
+            const lastId = await DeathDeclaration.findOne({
+                where: {
+                    id: {
+                        [Op.like]: `${currentYear}%`
+                    }
+                },
+                order: [['createdAt', 'DESC']]
+            });
+            let newId;
+            if (lastId) {
+                const lastIdNumber = parseInt(lastId.id.split('/')[1]);
+                const newIdNumber = lastIdNumber + 1;
+                newId = `${currentYear}/${newIdNumber}`;
+            } else {
+                newId = `${currentYear}/1`;
+            }
+            deathDeclaration.id = newId;
+        }
+    }
+});
+
+const HospitalStayBulletin = db.define('hospital_stay_bulletin', {
+    id: {
+        type: DataTypes.STRING,
+        primaryKey: true,
+        allowNull: false
+    },
+    patientName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        comment: 'اسم المريض'
+    },
+    address: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'العنوان'
+    },
+    age: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'العمر'
+    },
+    profession: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'المهنة'
+    },
+    hospitalizationStartDate: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'تاريخ بداية الإقامة'
+    },
+    hospitalizationEndDate: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'تاريخ نهاية الإقامة'
+    },
+    operatedBy: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'الطبيب المعالج'
+    },
+    date: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        comment: 'تاريخ إصدار الوثيقة'
+    }
+}, {
+    timestamps: true,
+    tableName: 'hospital_stay_bulletins',
+    hooks: {
+        beforeValidate: async (bulletin) => {
+            const currentYear = new Date().getFullYear();
+            const lastId = await HospitalStayBulletin.findOne({
+                where: {
+                    id: {
+                        [Op.like]: `${currentYear}%`
+                    }
+                },
+                order: [['createdAt', 'DESC']]
+            });
+            let newId;
+            if (lastId) {
+                const lastIdNumber = parseInt(lastId.id.split('/')[1]);
+                const newIdNumber = lastIdNumber + 1;
+                newId = `${currentYear}/${newIdNumber}`;
+            } else {
+                newId = `${currentYear}/1`;
+            }
+            bulletin.id = newId;
+        }
+    }
+});
+
 module.exports = {
     Consent_certificate,
     Birth_notice,
     BirthDeclaration,
-    OperationCostDeclaration
+    OperationCostDeclaration,
+    BirthCertificate,
+    DeathDeclaration,
+    HospitalStayBulletin
 };
-
-
-   
    
 
 

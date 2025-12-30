@@ -35,6 +35,10 @@ const ProceduresRequest = db.define('proceduresRequest', {
         values: status,
         defaultValue: 'Pending',
     },
+    completeDate:{
+        type:Sequelize.DATE,
+        allowNull:true
+    }
     
 }, {
     tableName: 'proceduresrequests',
@@ -62,6 +66,14 @@ const ProceduresRequestItems = db.define('proceduresRequestItems', {
             key: 'id',
             onDelete: 'CASCADE'
         }
+    },
+    quantity:{
+        type:Sequelize.INTEGER,
+        allowNull:false,
+    },
+    note:{
+        type:Sequelize.TEXT,
+        allowNull:true
     }
 }, {
     tableName: 'proceduresrequestitems',

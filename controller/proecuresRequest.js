@@ -3,6 +3,8 @@ const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const Patient = require('../models/Patient');      
     const Invoice = require('../models/Invoice').Invoice;
+const Sequelize = require('sequelize');    
+const { now } = require('moment-timezone');
 
 
 // Get all procedures requests
@@ -160,6 +162,8 @@ exports.confirmProceduresRequest = catchAsync(async (req, res, next) => {
         return next(new AppError('Procedures request not found', 404));
     }
     proceduresRequest.status = 'Completed';
+    // set complete date to now
+    proceduresRequest.completeDate = now(); 
     await proceduresRequest.save();
     // create an invoice
         let newInvoice;
@@ -193,7 +197,7 @@ exports.confirmProceduresRequest = catchAsync(async (req, res, next) => {
             procedureID: procedure.id,
             procedureName: procedure.procedureName,
             cost: procedure.cost,
-            quantity: 1,
+            quantity: item.quantity
         });
     }
     const updatedInvoice = await Invoice.findByPk(newInvoice.invoiceId, {
@@ -225,3 +229,26 @@ exports.getPendingProceduresRequests = catchAsync(async (req, res, next) => {
 
     });
 });
+
+exports.getCompletedRequestsInPeriod = catchAsync (async (req,res,next)=>{
+        const { startDate, endDate } = req.query;
+        if (new Date(startDate) > new Date(endDate)) {
+        return next(new appError('Start date must be before end date', 400));
+    }
+    const proceduresRequests = await ProceduresRequest.findAll({
+        where:{
+            status:'Completed',
+            completeDate:{
+                [Sequelize.Op.gte]: new Date(startDate).toISOString(),
+                [Sequelize.Op.lte]: new Date(endDate).toISOString()
+            }
+        }
+    });
+    res.status(200).json({
+        status:'success',
+        data:{
+            proceduresRequests,
+        }
+    });
+
+} )
