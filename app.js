@@ -48,14 +48,18 @@ app.use(express.urlencoded({ extended: true }));
 // Database
 
 const buildPath = path.join(__dirname, 'dist');
+const buildPath2 = path.join(__dirname, 'dist2');
+
+// Serve static assets at root level
 app.use(express.static(buildPath));
-// Handle all other routes by serving the frontend's index.html
+app.use(express.static(buildPath2));
+
+// Also serve HTML files on specific routes
 app.get('/labo', (req, res) => {
-    res.sendFile(path.join(buildPath, 'index.html'), (err) => {
-        if (err) {
-            res.status(500).send('Error loading the frontend');
-        }
-    });
+  res.sendFile(path.join(buildPath, 'index.html'));
+});
+app.get('/reception', (req, res) => {
+  res.sendFile(path.join(buildPath2, 'index.html'));
 });
 app.use('/users',usersroutes);
 app.use('/doctors',doctorsroutes);

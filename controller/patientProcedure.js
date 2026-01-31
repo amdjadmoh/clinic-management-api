@@ -126,6 +126,8 @@ exports.assignProcedureToInvoice = catchAsync(async (req, res, next) => {
       cost: req.body.cost,
       procedureID: procedure.id,
       quantity: quantity,
+      doctorId: req.body.doctorId || null,
+      doctorName: req.body.doctorName || null,
     });
     return res.status(200).json({
       status: "success",
@@ -151,6 +153,8 @@ exports.assignProcedureToInvoice = catchAsync(async (req, res, next) => {
     cost: procedure.cost,
     procedureID: procedure.id,
     quantity: quantity,
+    doctorId: req.body.doctorId || null,
+    doctorName: req.body.doctorName || null,
   });
   res.status(200).json({
     status: "success",

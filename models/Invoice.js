@@ -47,6 +47,11 @@ const Invoice = db.define('invoice',{
     paidTo:{
         type:sequelize.STRING,
         allowNull:true,
+    },
+    atNight:{
+        type:sequelize.BOOLEAN,
+        allowNull:true,
+        defaultValue:false,
     }
 },{
     tableName:'invoices',
@@ -88,7 +93,19 @@ const InvoiceProcedure = db.define(
       date :{
         type:sequelize.DATE,
         allowNull:true,
-    defaultValue:sequelize.NOW,}
+    defaultValue:sequelize.NOW,},
+      doctorId:{
+        type:sequelize.INTEGER,
+        allowNull:true,
+        references:{
+            model:'doctors',
+            key:'id',
+        }
+      },
+      doctorName:{
+        type:sequelize.STRING,
+        allowNull:true,
+      }
     },
     { timestamps: false },
 );

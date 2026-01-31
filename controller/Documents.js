@@ -24,6 +24,8 @@ exports.createConsentCertificate = catchAsync(async (req, res) => {
     patientIdReleasedFrom: req.body.patientIdReleasedFrom,
     patientIdReleaseDate: req.body.patientIdReleaseDate,
     text: req.body.text,
+    phone1: req.body.phone1,
+    phone2: req.body.phone2,
   });
 
   res.status(201).json({
@@ -104,6 +106,8 @@ exports.createOperationCostDeclaration = catchAsync(async (req, res) => {
     patientIdReleasedFrom: req.body.patientIdReleasedFrom,
     date: req.body.date,
     delcaration: req.body.delcaration,
+    phone1: req.body.phone1,
+    phone2: req.body.phone2,
   });
 
   res.status(201).json({

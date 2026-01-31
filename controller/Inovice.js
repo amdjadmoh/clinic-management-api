@@ -2,6 +2,7 @@ const appError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const Patient = require('../models/Patient');
 const {InvoiceProcedure,InvoiceResult,Invoice} = require('../models/Invoice');
+const PreDefinedProcedure = require('../models/PreDefinedProcedure');
 const { Op } = require('sequelize');
 exports.getAllInvoices = catchAsync(async (req, res, next) => {
     const invoices = await Invoice.findAll();
@@ -43,12 +44,37 @@ exports.getInvoice = catchAsync(async (req, res, next) => {
     }
     );
 
-    const combinedItems = [...procedures, ...results2];
+    // Map procedures to include doctor info
+    const proceduresWithDoctor = procedures.map(proc => ({
+        ...proc.toJSON(),
+        doctorId: proc.doctorId,
+        doctorName: proc.doctorName,
+    }));
+
+    const combinedItems = [...proceduresWithDoctor, ...results2];
+    
+    // Get doctor info from procedures with their procedure names
+    const doctorProceduresMap = {};
+    procedures.filter(proc => proc.doctorId).forEach(proc => {
+        if (!doctorProceduresMap[proc.doctorId]) {
+            doctorProceduresMap[proc.doctorId] = {
+                id: proc.doctorId,
+                name: proc.doctorName,
+                procedures: []
+            };
+        }
+        doctorProceduresMap[proc.doctorId].procedures.push(proc.procedureName);
+    });
+    
+    // Convert to array
+    const doctors = Object.values(doctorProceduresMap);
+
     res.status(200).json({
         status: 'success',
         data: {
             invoice: {
                 ...invoice.toJSON(),
+                doctors: doctors,
                 predefinedprocedures: combinedItems
             }
         }
@@ -201,26 +227,166 @@ exports.searchInvoiceByName= catchAsync( async (req,res,next)=>{
 
 
 exports.searchPaidInvoicesByDateRange = catchAsync(async (req, res, next) => {
-    const { startDate, endDate} = req.query;
+    const { startDate, endDate, type, operationName, doctorId } = req.query;
 
     if (new Date(startDate) > new Date(endDate)) {
         return next(new appError('Start date must be before end date', 400));
     }
 
-    const invoices = await Invoice.findAll({
-        where: {
-            paimentDate: {
-                [Op.gte]: new Date(startDate).toISOString(),
-                [Op.lte]: new Date(endDate).toISOString()
-            },
-            invoiceStatus: 'paid',
+    // Build where clause with optional invoice type filter
+    const whereClause = {
+        paimentDate: {
+            [Op.gte]: new Date(startDate).toISOString(),
+            [Op.lte]: new Date(endDate).toISOString()
         },
+        invoiceStatus: 'paid',
+    };
+
+    // Optional invoice type filter (operation or normal)
+    if (type) {
+        whereClause.type = type;
+    }
+
+    const invoices = await Invoice.findAll({
+        where: whereClause,
     });
+
+    // Get details for each invoice
+    const detailedInvoices = await Promise.all(invoices.map(async (invoice) => {
+        const procedures = await InvoiceProcedure.findAll({
+            where: { invoiceID: invoice.invoiceId }
+        });
+
+
+        // Get procedure types from PreDefinedProcedure table
+        const procedureIds = procedures.map(p => p.procedureID);
+        const preDefinedProcedures = await PreDefinedProcedure.findAll({
+            where: { id: procedureIds },
+            attributes: ['id', 'type']
+        });
+        
+        // Create a map of procedureID -> type
+        const procedureTypeMap = {};
+        preDefinedProcedures.forEach(p => {
+            procedureTypeMap[p.id] = p.type;
+        });
+
+        let mainProcedureNames = [];
+        let mainProcedureAmount = 0;
+        let otherItemsAmount = 0;
+
+        if (invoice.type === 'operation') {
+            // For operation invoices: main procedures are of type "opération"
+            const operationProcs = procedures.filter(proc => {
+                const procType = procedureTypeMap[proc.procedureID];
+                return procType && procType.toLowerCase() === 'opération';
+            });            
+
+            // Collect all operation names and sum their amounts
+            operationProcs.forEach(proc => {
+                mainProcedureNames.push(proc.procedureName);
+                mainProcedureAmount += parseFloat(proc.cost || 0) * parseInt(proc.quantity || 1);
+            });
+            
+            // Calculate other items (everything except the operation type)
+            otherItemsAmount = procedures
+                .filter(proc => {
+                    const procType = procedureTypeMap[proc.procedureID];
+                    return !procType || procType.toLowerCase() !== 'opération';
+                })
+                .reduce((sum, proc) => sum + (parseFloat(proc.cost || 0) * parseInt(proc.quantity || 1)), 0);
+        } else {
+            // For normal invoices: main procedures are consultation type
+            const consultationProcs = procedures.filter(proc => {
+                const procType = procedureTypeMap[proc.procedureID];
+                return procType && procType === 'Consultation  normal';
+            });
+            
+            // Collect all consultation names and sum their amounts
+            consultationProcs.forEach(proc => {
+                mainProcedureNames.push(proc.procedureName);
+                mainProcedureAmount += parseFloat(proc.cost || 0) * parseInt(proc.quantity || 1);
+            });
+            
+            // Calculate other items (everything except consultation types)
+            otherItemsAmount = procedures
+                .filter(proc => {
+                    const procType = procedureTypeMap[proc.procedureID];
+                    return !procType || procType !== 'Consultation  normal';
+                })
+                .reduce((sum, proc) => sum + (parseFloat(proc.cost || 0) * parseInt(proc.quantity || 1)), 0);
+        }
+
+       
+        
+        // Get doctor info from procedures with their procedure names
+        const doctorProceduresMap = {};
+        procedures.filter(proc => proc.doctorId).forEach(proc => {
+            if (!doctorProceduresMap[proc.doctorId]) {
+                doctorProceduresMap[proc.doctorId] = {
+                    id: proc.doctorId,
+                    name: proc.doctorName,
+                    procedures: []
+                };
+            }
+            doctorProceduresMap[proc.doctorId].procedures.push(proc.procedureName);
+        });
+        
+        // Convert to array
+        const doctors = Object.values(doctorProceduresMap);
+
+        // Get patient details
+        const patient = await Patient.findByPk(invoice.patientID);
+        return {
+            invoiceId: invoice.invoiceId,
+            patientID: invoice.patientID,
+            patient: patient,
+            invoiceStatus: invoice.invoiceStatus,
+            type: invoice.type,
+            paimentDate: invoice.paimentDate,
+            paidAt: invoice.paidAt,
+            paidTo: invoice.paidTo,
+            atNight: invoice.atNight,
+            remise: invoice.remise,
+            // Main procedure info (operation or consultation based on invoice type)
+            mainProcedureNames: mainProcedureNames,
+            mainProcedureAmount: mainProcedureAmount,
+            // Other items amount
+            otherItemsAmount: otherItemsAmount,
+            // Total
+            invoiceAmount: invoice.invoiceAmount,
+            // Doctor info with procedures
+            doctors: doctors,
+            createdAt: invoice.createdAt,
+            updatedAt: invoice.updatedAt,
+        };
+    }));
+
+    // Apply optional filters on the detailed invoices
+    let filteredInvoices = detailedInvoices;
+
+    // Filter by main procedure name (optional)
+    if (operationName) {
+        filteredInvoices = filteredInvoices.filter(inv => 
+            inv.mainProcedureNames && inv.mainProcedureNames.some(name => 
+                name.toLowerCase().includes(operationName.toLowerCase())
+            )
+        );
+    }
+
+    // Filter by doctor ID (optional)
+    if (doctorId) {
+        const doctorIdNum = parseInt(doctorId);
+        filteredInvoices = filteredInvoices.filter(inv => 
+            inv.doctors.some(doc => doc.id === doctorIdNum)
+        );
+    }
 
     res.status(200).json({
         status: 'success',
+        results: filteredInvoices.length,
         data: {
-            invoices
+            invoices: filteredInvoices
         }
     });
 });

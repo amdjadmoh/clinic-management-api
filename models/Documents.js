@@ -54,6 +54,14 @@ const Consent_certificate = db.define('consent_certificate', {
       text: {
         type: DataTypes.TEXT,
         allowNull: true,
+    },
+    phone1: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    phone2: {
+        type: DataTypes.STRING,
+        allowNull: true,
     }
 },{
     timestamps:true,
@@ -330,6 +338,14 @@ const BirthDeclaration = db.define('BirthDeclaration', {
     delcaration:{
         type: DataTypes.TEXT,
         allowNull: false,
+    },
+    phone1: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    phone2: {
+        type: DataTypes.STRING,
+        allowNull: true,
     }
   }, {
     timestamps: true,
