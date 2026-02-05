@@ -86,7 +86,7 @@ exports.unassignResultFromInvoice = catchAsync(async (req, res, next) => {
 });
 
 exports.assignProcedureToInvoice = catchAsync(async (req, res, next) => {
-  const { procedureID, invoiceID, quantity } = req.body;
+  const { procedureID, invoiceID, quantity , date } = req.body;
   const procedure = await Procedure.findByPk(procedureID);
   if (!procedure) {
     return next(new AppError("No procedure found with that ID", 404));
@@ -128,6 +128,7 @@ exports.assignProcedureToInvoice = catchAsync(async (req, res, next) => {
       quantity: quantity,
       doctorId: req.body.doctorId || null,
       doctorName: req.body.doctorName || null,
+      date: date || new Date(),
     });
     return res.status(200).json({
       status: "success",
@@ -155,6 +156,7 @@ exports.assignProcedureToInvoice = catchAsync(async (req, res, next) => {
     quantity: quantity,
     doctorId: req.body.doctorId || null,
     doctorName: req.body.doctorName || null,
+    date: date || new Date(),
   });
   res.status(200).json({
     status: "success",
@@ -197,6 +199,27 @@ exports.unassignProcedureFromInvoice = catchAsync(async (req, res, next) => {
     },
   });
 });
+
+exports.updateProcedureInvoiceDate= catchAsync(async (req, res, next) => {
+  const { id, invoiceID, date } = req.body;
+  const invoice = await Invoice.findByPk(invoiceID);
+  if (!invoice) {
+    return next(new AppError("No invoice found with that ID", 404));
+  }
+  const procedure = await InvoiceProcedure.findOne({
+    where: { invoiceID: invoiceID, id: id },
+  });
+  if (!procedure) {
+    return next(new AppError("No procedure found with that ID", 404));
+  }
+  const updatedProcedure = await procedure.update({ date: date });
+  res.status(200).json({
+    msg: "success",
+    data: {
+      updatedProcedure
+    },
+  })
+});;
 
 exports.getProceduresByInvoice = catchAsync(async (req, res, next) => {
   const { invoiceID } = req.params;

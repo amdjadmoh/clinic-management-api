@@ -21,4 +21,8 @@ router
   .route('/unassignResult')
   .post(patientProcedureController.unassignResultFromInvoice);  
 
+router
+  .route('/updateDate')
+  .patch(patientProcedureController.updateProcedureInvoiceDate);
+
 module.exports = router;
