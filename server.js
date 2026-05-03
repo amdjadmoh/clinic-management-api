@@ -9,15 +9,15 @@ if (args.includes('init-db')) {
     // Run the database initialization script
     const sync = require('./sync');
 } else {
-    try{
-        db.authenticate();
-        console.log('Connection has been established successfully.');   
-    }
-    catch(error){
-        console.error('Unable to connect to the database:', error);
-    }
-    const port =   8080;
-    app.listen(port,()=>{
-        console.log(`Server is running on port ${port}`);
-    });
+    db.authenticate()
+        .then(() => {
+            console.log('Connection has been established successfully.');
+            const port = process.env.PORT || 8080;
+            app.listen(port, () => {
+                console.log(`Server is running on port ${port}`);
+            });
+        })
+        .catch(error => {
+            console.error('Unable to connect to the database:', error);
+        });
 }
