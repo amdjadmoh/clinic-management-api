@@ -92,10 +92,15 @@ app.use('/files', filesRoutes);
 app.use('/notifications', notificationsRoutes);
 app.use('/bloodTest', require('./routes/bloodTest'));
 app.use('/laboPrices', require('./routes/laboPrices'));
+app.use('/employees', require('./routes/employee'));
+app.use('/payroll', require('./routes/payroll'));
+app.use('/zkteco', require('./routes/zkteco'));
 const { notficationController } = require('./controller/notificationController');
 // Send appointment notifications every hour
 const cron = require('node-cron');
 const notificationController = require('./controller/notificationController');
+
+const zktecoController = require('./controller/zktecoController');
 
 // Run once at startup
 (async () => {
@@ -103,8 +108,11 @@ const notificationController = require('./controller/notificationController');
     console.log('Running initial appointment notifications check...');
     await notificationController.sendAppointmentNotification();
     console.log('Successfully sent initial appointment notifications');
+    console.log('Starting ZKTeco sync...');
+    await zktecoController.syncZktecoLogsFunction();
+    console.log('Successfully synced ZKTeco logs');
   } catch (error) {
-    console.error('Error sending initial appointment notifications:', error);
+    console.error('Error during initial sync/notifications:', error);
   }
 })();
 
@@ -118,6 +126,18 @@ cron.schedule('0 * * * *', async () => {
     console.error('Error sending appointment notifications:', error);
   }
 });
+
+// Schedule ZKTeco sync every 15 minutes
+cron.schedule('*/15 * * * *', async () => {
+  try {
+    console.log('Running scheduled ZKTeco sync...');
+    await zktecoController.syncZktecoLogsFunction();
+    console.log('Successfully completed scheduled ZKTeco sync');
+  } catch (error) {
+    console.error('Error in ZKTeco scheduled sync:', error);
+  }
+});
+
 // Catch-all route for undefined routes
 app.use((req, res, next) => {
   res.status(404).send({ error: 'Route not found' });

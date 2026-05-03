@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: clinic_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: clinic_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  api:
+    build: .
+    container_name: clinic_api
+    environment:
+      - PORT=8080
+      - NODE_ENV=development
+      - DB_HOST=db
+      - DB_USER=postgres
+      - DB_PASSWORD=mysecretpassword
+      - DB_NAME=clinic_db
+      - DB_CONNECTION_STRING=postgres://postgres:mysecretpassword@db:5432/clinic_db
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    command: >
+      sh -c "npm run init-db && node server.js"
+
+volumes:
+  pgdata:
+

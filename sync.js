@@ -38,8 +38,12 @@ const BloodTest = require('./models/BloodTest');
 const LaboPrices = require('./models/LaboPrices');
 const {ProceduresRequest, ProceduresRequestItems} = require('./models/proceduresRequests');
 
-
-
+// HR Models
+const Job = require('./models/Job');
+const Employee = require('./models/Employee');
+const EmployeePaymentSetting = require('./models/EmployeePaymentSetting');
+const Attendance = require('./models/Attendance');
+const Payroll = require('./models/Payroll');
 
 // Modify your sync code
 (async () => {
