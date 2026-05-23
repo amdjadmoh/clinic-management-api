@@ -37,6 +37,8 @@ const Notification = require('./models/Notification');
 const BloodTest = require('./models/BloodTest');
 const LaboPrices = require('./models/LaboPrices');
 const {ProceduresRequest, ProceduresRequestItems} = require('./models/proceduresRequests');
+const CertificateTemplate = require('./models/CertificateTemplate');
+const PatientCertificate = require('./models/PatientCertificate');
 
 // HR Models
 const Job = require('./models/Job');

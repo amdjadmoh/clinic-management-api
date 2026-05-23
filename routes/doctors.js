@@ -1,5 +1,6 @@
 const exporess=require('express');
 const doctorsController=require('../controller/doctorsController');
+const certificateController=require('../controller/certificateController');
 
 const router=exporess.Router();
 
@@ -27,6 +28,16 @@ router
 router
     .route('/:doctorID/logs/date-range-by-proc')
     .get(doctorsController.getDoctorLogInDateRangeByProc);
+
+router
+    .route('/:doctorID/certificate-templates')
+    .get(certificateController.getDoctorTemplates)
+    .post(certificateController.upsertDoctorTemplate);
+
+router
+    .route('/:doctorID/certificate-templates/:certificateType')
+    .get(certificateController.getDoctorTemplateByType);
+
 router
 .route('/:id')
 .get(doctorsController.getDoctor)
