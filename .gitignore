@@ -142,3 +142,4 @@ vite.config.ts.timestamp-*
 *-macos
 *-win.exe
 postman/.dependencies/
+init.sql
