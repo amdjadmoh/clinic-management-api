@@ -29,6 +29,17 @@ const User = db.define('user', {
       key: 'id',
     },
   },
+  settings: {
+    type: sequelize.TEXT,
+    allowNull: true,
+    get() {
+      const rawValue = this.getDataValue('settings');
+      return rawValue ? JSON.parse(rawValue) : {};
+    },
+    set(value) {
+      this.setDataValue('settings', value ? JSON.stringify(value) : null);
+    }
+  }
 }, {
   tableName: 'users',
   timestamps: false,

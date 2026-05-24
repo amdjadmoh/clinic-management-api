@@ -1,5 +1,6 @@
 const express = require('express');
 const employeeController = require('../controller/employeeController');
+const leaveController = require('../controller/leaveController');
 
 const router = express.Router();
 
@@ -12,6 +13,13 @@ router.route('/jobs/:id')
   .put(employeeController.updateJob)
   .delete(employeeController.deleteJob);
 
+router.route('/leaves')
+  .post(leaveController.createLeaveRequest)
+  .get(leaveController.getAllLeaveRequests);
+
+router.route('/leaves/:id')
+  .put(leaveController.updateLeaveStatus);
+
 router.route('/')
   .post(employeeController.createEmployee)
   .get(employeeController.getEmployees);
@@ -23,6 +31,12 @@ router.route('/:id')
 
 router.route('/:id/attendance')
   .get(employeeController.getEmployeeAttendance);
+
+router.route('/:id/leaves')
+  .get(leaveController.getEmployeeLeaves);
+
+router.route('/:id/files')
+  .get(employeeController.getEmployeeFiles);
 
 router.route('/:employeeId/payment-settings')
   .put(employeeController.updateEmployeePaymentSettings);

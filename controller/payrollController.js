@@ -3,6 +3,7 @@ const EmployeePaymentSetting = require('../models/EmployeePaymentSetting');
 const Attendance = require('../models/Attendance');
 const Payroll = require('../models/Payroll');
 const DoctorWorkLog = require('../models/DoctorLog');
+const Leave = require('../models/Leave');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const moment = require('moment-timezone');
@@ -40,7 +41,48 @@ const calculateSalaryBreakdown = async (employeeId, month) => {
     }
   });
 
-  const absencesCount = attendances.filter(a => a.status === 'absent').length;
+  // Query approved leaves for this month
+  const approvedLeaves = await Leave.findAll({
+    where: {
+      employeeId,
+      status: 'approved',
+      [Op.or]: [
+        {
+          startDate: {
+            [Op.between]: [startOfMonth.format('YYYY-MM-DD'), endOfMonth.format('YYYY-MM-DD')]
+          }
+        },
+        {
+          endDate: {
+            [Op.between]: [startOfMonth.format('YYYY-MM-DD'), endOfMonth.format('YYYY-MM-DD')]
+          }
+        }
+      ]
+    }
+  });
+
+  let paidLeaveDays = 0;
+  let unpaidLeaveDays = 0;
+
+  approvedLeaves.forEach(l => {
+    const leaveStart = moment.max(moment(l.startDate), startOfMonth);
+    const leaveEnd = moment.min(moment(l.endDate), endOfMonth);
+    const days = leaveEnd.diff(leaveStart, 'days') + 1;
+    if (days > 0) {
+      if (l.type === 'unpaid') {
+        unpaidLeaveDays += days;
+      } else {
+        paidLeaveDays += days;
+      }
+    }
+  });
+
+  if (paidLeaveDays > 0) {
+    logs.push(`Approved Paid Leaves: ${paidLeaveDays} days (Excused and fully paid)`);
+  }
+  if (unpaidLeaveDays > 0) {
+    logs.push(`Approved Unpaid Leaves: ${unpaidLeaveDays} days (Salary docked)`);
+  }
 
   for (const setting of employee.employee_payment_settings) {
     const { type, value, procedureId } = setting;
@@ -72,15 +114,19 @@ const calculateSalaryBreakdown = async (employeeId, month) => {
 
       if (baselineDays < 0) baselineDays = 0;
 
-      const presentDays = attendances.filter(a => a.status === 'present').length;
-      const absencesCount = Math.max(0, baselineDays - presentDays);
-      const workedDays = Math.max(0, baselineDays - absencesCount);
+      // Add paidLeaveDays to presentDays to count them as worked/excused, and unpaid leaves dock baseline working days
+      const presentDays = attendances.filter(a => a.status === 'present').length + paidLeaveDays;
+      
+      // Unpaid leaves dock baseline days
+      let adjustedBaseline = Math.max(0, baselineDays - unpaidLeaveDays);
+      const absencesCount = Math.max(0, adjustedBaseline - presentDays);
+      const workedDays = Math.max(0, adjustedBaseline - absencesCount);
 
       const dailyRate = numericValue / customExpectedDays;
       const earned = workedDays * dailyRate;
 
       fixedSalaryEarned += earned;
-      logs.push(`Fixed Monthly: Worked days=${workedDays} (Base=${baselineDays}, Absences=${absencesCount}), Daily Rate=${dailyRate.toFixed(2)}, Earned=${earned.toFixed(2)}`);
+      logs.push(`Fixed Monthly: Worked days=${workedDays} (Base=${baselineDays}, Adjusted Base=${adjustedBaseline}, Paid Leaves=${paidLeaveDays}, Absences=${absencesCount}), Daily Rate=${dailyRate.toFixed(2)}, Earned=${earned.toFixed(2)}`);
     }
 
     if (type === 'hourly') {
@@ -143,6 +189,18 @@ const calculateSalaryBreakdown = async (employeeId, month) => {
       logs.push(`Bonus (${type}): Amount=${numericValue}`);
     }
   }
+
+  // Get one-time adjustments for this employee and month
+  let adjustmentsSum = 0;
+  const existingPayrollRecord = await Payroll.findOne({ where: { employeeId, month } });
+  if (existingPayrollRecord && existingPayrollRecord.details && Array.isArray(existingPayrollRecord.details.adjustments)) {
+    existingPayrollRecord.details.adjustments.forEach(adj => {
+      adjustmentsSum += parseFloat(adj.amount) || 0;
+      logs.push(`One-time Adjustment: Amount=${adj.amount} DZD, Reason="${adj.description}"`);
+    });
+  }
+
+  bonusEarned += adjustmentsSum;
 
   const totalEarned = fixedSalaryEarned + hourlySalaryEarned + commissionEarned + bonusEarned;
 
@@ -246,7 +304,7 @@ exports.calculateAndGetSalarySummary = catchAsync(async (req, res, next) => {
 });
 
 exports.payEmployee = catchAsync(async (req, res, next) => {
-  const { employeeId, month, paymentAmount } = req.body;
+  const { employeeId, month, paymentAmount, notes } = req.body;
 
   if (!employeeId || !month || paymentAmount === undefined) {
     return next(new AppError('Please provide employeeId, month, and paymentAmount', 400));
@@ -256,7 +314,18 @@ exports.payEmployee = catchAsync(async (req, res, next) => {
 
   let payroll = await Payroll.findOne({ where: { employeeId, month } });
 
+  const paymentRecord = {
+    amount: parseFloat(paymentAmount),
+    date: new Date().toISOString(),
+    notes: notes || ''
+  };
+
   if (!payroll) {
+    const details = {
+      logs: breakdown.logs,
+      payments: [paymentRecord]
+    };
+
     payroll = await Payroll.create({
       employeeId,
       month,
@@ -267,16 +336,82 @@ exports.payEmployee = catchAsync(async (req, res, next) => {
       totalEarned: breakdown.totalEarned,
       totalPaid: paymentAmount,
       status: paymentAmount >= breakdown.totalEarned ? 'paid' : (paymentAmount > 0 ? 'partially_paid' : 'unpaid'),
-      details: { logs: breakdown.logs }
+      details
     });
   } else {
+    const details = payroll.details || {};
+    if (!details.payments || !Array.isArray(details.payments)) {
+      details.payments = [];
+    }
+    details.payments.push(paymentRecord);
+    details.logs = breakdown.logs;
+
     payroll.totalPaid = parseFloat(payroll.totalPaid) + parseFloat(paymentAmount);
     payroll.status = payroll.totalPaid >= payroll.totalEarned ? 'paid' : (payroll.totalPaid > 0 ? 'partially_paid' : 'unpaid');
+    payroll.details = details;
     await payroll.save();
   }
 
   res.status(200).json({
     status: 'success',
     data: { payroll },
+  });
+});
+
+exports.addAdjustment = catchAsync(async (req, res, next) => {
+  const { employeeId, month, amount, description } = req.body;
+
+  if (!employeeId || !month || amount === undefined) {
+    return next(new AppError('Please provide employeeId, month, and amount', 400));
+  }
+
+  let payroll = await Payroll.findOne({ where: { employeeId, month } });
+  const breakdown = await calculateSalaryBreakdown(employeeId, month);
+
+  const adjustment = {
+    amount: parseFloat(amount),
+    description: description || 'One-time adjustment',
+    date: new Date().toISOString()
+  };
+
+  if (!payroll) {
+    const details = {
+      logs: breakdown.logs,
+      adjustments: [adjustment]
+    };
+
+    const updatedBonus = breakdown.bonusEarned + parseFloat(amount);
+    const updatedTotal = breakdown.totalEarned + parseFloat(amount);
+
+    payroll = await Payroll.create({
+      employeeId,
+      month,
+      fixedSalaryEarned: breakdown.fixedSalaryEarned,
+      hourlySalaryEarned: breakdown.hourlySalaryEarned,
+      commissionEarned: breakdown.commissionEarned,
+      bonusEarned: updatedBonus,
+      totalEarned: updatedTotal,
+      totalPaid: 0,
+      status: 'unpaid',
+      details
+    });
+  } else {
+    const details = payroll.details || {};
+    if (!details.adjustments || !Array.isArray(details.adjustments)) {
+      details.adjustments = [];
+    }
+    details.adjustments.push(adjustment);
+    details.logs = breakdown.logs;
+
+    payroll.bonusEarned = parseFloat(payroll.bonusEarned) + parseFloat(amount);
+    payroll.totalEarned = parseFloat(payroll.totalEarned) + parseFloat(amount);
+    payroll.status = payroll.totalPaid >= payroll.totalEarned ? 'paid' : (payroll.totalPaid > 0 ? 'partially_paid' : 'unpaid');
+    payroll.details = details;
+    await payroll.save();
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { payroll }
   });
 });

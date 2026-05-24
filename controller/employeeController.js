@@ -2,6 +2,9 @@ const Employee = require('../models/Employee');
 const Job = require('../models/Job');
 const EmployeePaymentSetting = require('../models/EmployeePaymentSetting');
 const Attendance = require('../models/Attendance');
+const Dep = require('../models/Dep');
+const File = require('../models/Files');
+const { Op } = require('sequelize');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const moment = require('moment-timezone');
@@ -67,8 +70,8 @@ exports.deleteJob = catchAsync(async (req, res, next) => {
 
 // Employees
 exports.createEmployee = catchAsync(async (req, res, next) => {
-  const { fullName, userId, doctorId, jobId, startDate, status, zktecoId } = req.body;
-  const employee = await Employee.create({ fullName, userId, doctorId, jobId, startDate, status, zktecoId });
+  const { fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber } = req.body;
+  const employee = await Employee.create({ fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber });
 
   // If a jobId is provided, find the job to get its default settings
   if (jobId) {
@@ -96,9 +99,13 @@ exports.createEmployee = catchAsync(async (req, res, next) => {
 
 exports.getEmployees = catchAsync(async (req, res, next) => {
   const employees = await Employee.findAll({
+    where: {
+      status: { [Op.ne]: 'deleted' }
+    },
     include: [
       { model: Job },
-      { model: EmployeePaymentSetting }
+      { model: EmployeePaymentSetting },
+      { model: Dep }
     ],
   });
   res.status(200).json({
@@ -111,7 +118,8 @@ exports.getEmployee = catchAsync(async (req, res, next) => {
   const employee = await Employee.findByPk(req.params.id, {
     include: [
       { model: Job },
-      { model: EmployeePaymentSetting }
+      { model: EmployeePaymentSetting },
+      { model: Dep }
     ],
   });
   if (!employee) {
@@ -124,7 +132,7 @@ exports.getEmployee = catchAsync(async (req, res, next) => {
 });
 
 exports.updateEmployee = catchAsync(async (req, res, next) => {
-  const { fullName, userId, doctorId, jobId, startDate, status, zktecoId } = req.body;
+  const { fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber } = req.body;
   const employee = await Employee.findByPk(req.params.id);
   if (!employee) {
     return next(new AppError('Employee not found', 404));
@@ -139,6 +147,9 @@ exports.updateEmployee = catchAsync(async (req, res, next) => {
   employee.startDate = startDate !== undefined ? startDate : employee.startDate;
   employee.status = status !== undefined ? status : employee.status;
   employee.zktecoId = zktecoId !== undefined ? zktecoId : employee.zktecoId;
+  employee.phoneNumber = phoneNumber !== undefined ? phoneNumber : employee.phoneNumber;
+  employee.depId = depId !== undefined ? depId : employee.depId;
+  employee.bankAccountNumber = bankAccountNumber !== undefined ? bankAccountNumber : employee.bankAccountNumber;
   await employee.save();
 
   // If jobId changed, fetch new job defaultSettings and override employee settings
@@ -173,10 +184,36 @@ exports.deleteEmployee = catchAsync(async (req, res, next) => {
   if (!employee) {
     return next(new AppError('Employee not found', 404));
   }
-  await employee.destroy();
+  employee.status = 'deleted';
+  await employee.save();
   res.status(204).json({
     status: 'success',
     data: null,
+  });
+});
+
+exports.getEmployeeFiles = catchAsync(async (req, res, next) => {
+  const employeeId = req.params.id;
+
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) {
+    return next(new AppError('Employee not found', 404));
+  }
+
+  const files = await File.findAll({
+    where: {
+      recipientType: 'employee',
+      recipientId: employeeId
+    },
+    order: [['createdAt', 'DESC']]
+  });
+
+  res.status(200).json({
+    status: 'success',
+    results: files.length,
+    data: {
+      files
+    }
   });
 });
 

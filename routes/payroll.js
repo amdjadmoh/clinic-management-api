@@ -7,5 +7,7 @@ router.route('/')
   .get(payrollController.calculateAndGetSalarySummary);
 router.route('/pay')
   .post(payrollController.payEmployee);
+router.route('/adjustment')
+  .post(payrollController.addAdjustment);
 
 module.exports = router;

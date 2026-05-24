@@ -3,6 +3,7 @@ const db = require('../config/database');
 const Users = require('./Users');
 const { Doctors } = require('./Doctors');
 const Job = require('./Job');
+const Dep = require('./Dep');
 
 const Employee = db.define('employee', {
   id: {
@@ -51,6 +52,22 @@ const Employee = db.define('employee', {
   zktecoId: {
     type: sequelize.STRING,
     allowNull: true,
+  },
+  phoneNumber: {
+    type: sequelize.STRING,
+    allowNull: true,
+  },
+  depId: {
+    type: sequelize.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'departments',
+      key: 'id',
+    }
+  },
+  bankAccountNumber: {
+    type: sequelize.STRING,
+    allowNull: true,
   }
 }, {
   tableName: 'employees',
@@ -60,5 +77,6 @@ const Employee = db.define('employee', {
 Employee.belongsTo(Users, { foreignKey: 'userId', onDelete: 'SET NULL' });
 Employee.belongsTo(Doctors, { foreignKey: 'doctorId', onDelete: 'SET NULL' });
 Employee.belongsTo(Job, { foreignKey: 'jobId', onDelete: 'SET NULL' });
+Employee.belongsTo(Dep, { foreignKey: 'depId', onDelete: 'SET NULL' });
 
 module.exports = Employee;

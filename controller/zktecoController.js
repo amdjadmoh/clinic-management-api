@@ -218,3 +218,60 @@ exports.syncZktecoLogs = catchAsync(async (req, res, next) => {
     return next(new AppError(`Error fetching logs from ZKTeco device: ${err.message}`, 500));
   }
 });
+
+exports.getDeviceUsers = catchAsync(async (req, res, next) => {
+  const deviceIp = req && req.query && req.query.deviceIp ? req.query.deviceIp : '192.168.1.55';
+  const port = req && req.query && req.query.port ? parseInt(req.query.port) : 4370;
+
+  let deviceUsers = [];
+
+  if (process.env.NODE_ENV !== 'production') {
+    const userinfoPath = path.join(__dirname, '../mdb_exports/USERINFO.csv');
+    if (fs.existsSync(userinfoPath)) {
+      const userInfoContent = fs.readFileSync(userinfoPath, 'utf8');
+      const userRows = userInfoContent.split('\n').map(r => r.trim()).filter(Boolean);
+
+      for (let i = 1; i < userRows.length; i++) {
+        const cols = userRows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        if (cols.length >= 4) {
+          const userId = cols[0];
+          const name = cols[3].replace(/"/g, '');
+          if (!name || name === userId) continue;
+          deviceUsers.push({
+            zktecoId: String(userId),
+            fullName: name
+          });
+        }
+      }
+    }
+  } else {
+    const zkInstance = new ZKLib(deviceIp, port, 4000, 4000);
+    try {
+      await zkInstance.createSocket();
+      const users = await zkInstance.getUsers();
+      if (users && users.length > 0) {
+        for (const user of users) {
+          const userId = user.userId || user.uid;
+          const name = user.name;
+          if (userId && name) {
+            deviceUsers.push({
+              zktecoId: String(userId),
+              fullName: name
+            });
+          }
+        }
+      }
+      await zkInstance.disconnect();
+    } catch (err) {
+      return next(new AppError(`Error connecting to ZKTeco device: ${err.message}`, 500));
+    }
+  }
+
+  res.status(200).json({
+    status: 'success',
+    results: deviceUsers.length,
+    data: {
+      users: deviceUsers
+    }
+  });
+});
