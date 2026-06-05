@@ -10,4 +10,7 @@ router.route('/pay')
 router.route('/adjustment')
   .post(payrollController.addAdjustment);
 
+router.route('/history/:employeeId')
+  .get(payrollController.getEmployeePayrollHistory);
+
 module.exports = router;

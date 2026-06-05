@@ -2,6 +2,7 @@ const db = require("../config/database");
 const Sequelize = require("sequelize");
 const Procedures = require("./PreDefinedProcedure");
 const Patient = require("./Patient");
+const crypto = require("crypto");
 
 const Facture = db.define("Facture", {
   id: {
@@ -110,6 +111,10 @@ const Facture = db.define("Facture", {
     type: Sequelize.STRING,
     allowNull: true,
   },
+  verificationUrl: {
+    type: Sequelize.STRING,
+    allowNull: true,
+  },
 },
 {
   hooks: {
@@ -132,6 +137,11 @@ const Facture = db.define("Facture", {
 
       // Set the id in the format "year/number"
       facture.id = `${year}/${nextVal}`;
+
+      // Generate a secure random token for the verification URL
+      const webBackendUrl = process.env.WEB_BACKEND_URL || 'https://win-lm5a80j8ifd.reverse-mark.ts.net';
+      const secureToken = crypto.randomBytes(16).toString('hex');
+      facture.verificationUrl = `${webBackendUrl}/api/facture/verify/${secureToken}`;
     }
   },
 });

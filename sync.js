@@ -46,7 +46,10 @@ const Employee = require('./models/Employee');
 const EmployeePaymentSetting = require('./models/EmployeePaymentSetting');
 const Attendance = require('./models/Attendance');
 const Payroll = require('./models/Payroll');
+const PayrollPayment = require('./models/PayrollPayment');
+const PayrollAdjustment = require('./models/PayrollAdjustment');
 const Leave = require('./models/Leave');
+const EmployeeFile = require('./models/EmployeeFile');
 
 // Modify your sync code
 (async () => {

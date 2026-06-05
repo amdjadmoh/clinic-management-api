@@ -68,6 +68,10 @@ const Employee = db.define('employee', {
   bankAccountNumber: {
     type: sequelize.STRING,
     allowNull: true,
+  },
+  socialSecurityNumber: {
+    type: sequelize.STRING,
+    allowNull: true,
   }
 }, {
   tableName: 'employees',

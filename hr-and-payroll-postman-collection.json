@@ -365,6 +365,26 @@
             }
           },
           "response": []
+        },
+        {
+          "name": "Get Employee Payroll History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payroll/history/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payroll",
+                "history",
+                "1"
+              ]
+            },
+            "description": "Retrieve the complete historical list of monthly payroll records, payments (with dates/notes), adjustments, and calculation logs for a specific employee."
+          },
+          "response": []
         }
       ]
     },

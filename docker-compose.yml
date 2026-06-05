@@ -9,7 +9,8 @@ services:
       POSTGRES_PASSWORD: mysecretpassword
       POSTGRES_DB: clinic_db
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
+      - "[::1]:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.dump
@@ -28,7 +29,8 @@ services:
       - DB_NAME=clinic_db
       - DB_CONNECTION_STRING=postgres://postgres:mysecretpassword@db:5432/clinic_db
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
+      - "[::1]:8080:8080"
     depends_on:
       - db
     # Automatically runs latest migrations and starts the server

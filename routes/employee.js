@@ -36,7 +36,14 @@ router.route('/:id/leaves')
   .get(leaveController.getEmployeeLeaves);
 
 router.route('/:id/files')
-  .get(employeeController.getEmployeeFiles);
+  .get(employeeController.getEmployeeFiles)
+  .post(employeeController.uploadEmployeeFileMiddleware, employeeController.uploadEmployeeFile);
+
+router.route('/:id/files/:fileId/download')
+  .get(employeeController.downloadEmployeeFile);
+
+router.route('/:id/files/:fileId')
+  .delete(employeeController.deleteEmployeeFile);
 
 router.route('/:employeeId/payment-settings')
   .put(employeeController.updateEmployeePaymentSettings);

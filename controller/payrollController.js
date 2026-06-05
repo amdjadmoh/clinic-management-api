@@ -2,6 +2,8 @@ const Employee = require('../models/Employee');
 const EmployeePaymentSetting = require('../models/EmployeePaymentSetting');
 const Attendance = require('../models/Attendance');
 const Payroll = require('../models/Payroll');
+const PayrollPayment = require('../models/PayrollPayment');
+const PayrollAdjustment = require('../models/PayrollAdjustment');
 const DoctorWorkLog = require('../models/DoctorLog');
 const Leave = require('../models/Leave');
 const catchAsync = require('../utils/catchAsync');
@@ -192,9 +194,12 @@ const calculateSalaryBreakdown = async (employeeId, month) => {
 
   // Get one-time adjustments for this employee and month
   let adjustmentsSum = 0;
-  const existingPayrollRecord = await Payroll.findOne({ where: { employeeId, month } });
-  if (existingPayrollRecord && existingPayrollRecord.details && Array.isArray(existingPayrollRecord.details.adjustments)) {
-    existingPayrollRecord.details.adjustments.forEach(adj => {
+  const existingPayrollRecord = await Payroll.findOne({
+    where: { employeeId, month },
+    include: ['adjustments']
+  });
+  if (existingPayrollRecord && Array.isArray(existingPayrollRecord.adjustments)) {
+    existingPayrollRecord.adjustments.forEach(adj => {
       adjustmentsSum += parseFloat(adj.amount) || 0;
       logs.push(`One-time Adjustment: Amount=${adj.amount} DZD, Reason="${adj.description}"`);
     });
@@ -229,7 +234,10 @@ exports.calculateAndGetSalarySummary = catchAsync(async (req, res, next) => {
   for (const emp of employees) {
     let breakdown = await calculateSalaryBreakdown(emp.id, month);
 
-    const existingPayroll = await Payroll.findOne({ where: { employeeId: emp.id, month } });
+    const existingPayroll = await Payroll.findOne({
+      where: { employeeId: emp.id, month },
+      include: ['payments', 'adjustments']
+    });
 
     const startOfMonth = moment(month, 'YYYY-MM').startOf('month');
     const start = startOfMonth.format('YYYY-MM-DD');
@@ -272,7 +280,7 @@ exports.calculateAndGetSalarySummary = catchAsync(async (req, res, next) => {
     if (baselineDays < 0) baselineDays = 0;
     const absences = Math.max(0, baselineDays - presentDays);
 
-    if (existingPayroll && existingPayroll.status === 'paid') {
+    if (existingPayroll && existingPayroll.status === 'paid' && !isCurrentMonth) {
       breakdown = {
         fixedSalaryEarned: Math.round(parseFloat(existingPayroll.fixedSalaryEarned) || 0),
         hourlySalaryEarned: Math.round(parseFloat(existingPayroll.hourlySalaryEarned) || 0),
@@ -283,6 +291,22 @@ exports.calculateAndGetSalarySummary = catchAsync(async (req, res, next) => {
       };
     }
 
+    // Auto-sync existing active month payroll record with real-time calculated breakdown
+    if (existingPayroll && isCurrentMonth) {
+      existingPayroll.fixedSalaryEarned = breakdown.fixedSalaryEarned;
+      existingPayroll.hourlySalaryEarned = breakdown.hourlySalaryEarned;
+      existingPayroll.commissionEarned = breakdown.commissionEarned;
+      existingPayroll.bonusEarned = breakdown.bonusEarned;
+      existingPayroll.totalEarned = breakdown.totalEarned;
+      existingPayroll.status = parseFloat(existingPayroll.totalPaid) >= breakdown.totalEarned ? 'paid' : (parseFloat(existingPayroll.totalPaid) > 0 ? 'partially_paid' : 'unpaid');
+      
+      const details = existingPayroll.details || {};
+      details.logs = breakdown.logs;
+      existingPayroll.details = details;
+      
+      await existingPayroll.save();
+    }
+
     payrollSummaries.push({
       employeeId: emp.id,
       fullName: emp.fullName,
@@ -291,15 +315,58 @@ exports.calculateAndGetSalarySummary = catchAsync(async (req, res, next) => {
       presentDays,
       breakdown,
       paymentArchive: existingPayroll ? {
-        totalPaid: existingPayroll.totalPaid,
+        totalPaid: parseFloat(existingPayroll.totalPaid) || 0,
         status: existingPayroll.status,
-      } : { totalPaid: 0, status: 'unpaid' }
+        payments: existingPayroll.payments || [],
+        adjustments: existingPayroll.adjustments || []
+      } : { totalPaid: 0, status: 'unpaid', payments: [], adjustments: [] }
     });
   }
 
   res.status(200).json({
     status: 'success',
     data: { month, summaries: payrollSummaries },
+  });
+});
+
+exports.getEmployeePayrollHistory = catchAsync(async (req, res, next) => {
+  const { employeeId } = req.params;
+
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) {
+    return next(new AppError('Employee not found', 404));
+  }
+
+  const payrolls = await Payroll.findAll({
+    where: { employeeId },
+    include: ['payments', 'adjustments'],
+    order: [['month', 'DESC']]
+  });
+
+  const history = payrolls.map(p => ({
+    id: p.id,
+    month: p.month,
+    fixedSalaryEarned: parseFloat(p.fixedSalaryEarned) || 0,
+    hourlySalaryEarned: parseFloat(p.hourlySalaryEarned) || 0,
+    commissionEarned: parseFloat(p.commissionEarned) || 0,
+    bonusEarned: parseFloat(p.bonusEarned) || 0,
+    totalEarned: parseFloat(p.totalEarned) || 0,
+    totalPaid: parseFloat(p.totalPaid) || 0,
+    status: p.status,
+    payments: p.payments || [],
+    adjustments: p.adjustments || [],
+    logs: p.details && p.details.logs ? p.details.logs : []
+  }));
+
+  res.status(200).json({
+    status: 'success',
+    data: {
+      employee: {
+        id: employee.id,
+        fullName: employee.fullName
+      },
+      history
+    }
   });
 });
 
@@ -314,18 +381,7 @@ exports.payEmployee = catchAsync(async (req, res, next) => {
 
   let payroll = await Payroll.findOne({ where: { employeeId, month } });
 
-  const paymentRecord = {
-    amount: parseFloat(paymentAmount),
-    date: new Date().toISOString(),
-    notes: notes || ''
-  };
-
   if (!payroll) {
-    const details = {
-      logs: breakdown.logs,
-      payments: [paymentRecord]
-    };
-
     payroll = await Payroll.create({
       employeeId,
       month,
@@ -336,25 +392,25 @@ exports.payEmployee = catchAsync(async (req, res, next) => {
       totalEarned: breakdown.totalEarned,
       totalPaid: paymentAmount,
       status: paymentAmount >= breakdown.totalEarned ? 'paid' : (paymentAmount > 0 ? 'partially_paid' : 'unpaid'),
-      details
+      details: { logs: breakdown.logs }
     });
   } else {
-    const details = payroll.details || {};
-    if (!details.payments || !Array.isArray(details.payments)) {
-      details.payments = [];
-    }
-    details.payments.push(paymentRecord);
-    details.logs = breakdown.logs;
-
     payroll.totalPaid = parseFloat(payroll.totalPaid) + parseFloat(paymentAmount);
     payroll.status = payroll.totalPaid >= payroll.totalEarned ? 'paid' : (payroll.totalPaid > 0 ? 'partially_paid' : 'unpaid');
-    payroll.details = details;
+    payroll.details = { logs: breakdown.logs };
     await payroll.save();
   }
 
+  const payment = await PayrollPayment.create({
+    payrollId: payroll.id,
+    amount: parseFloat(paymentAmount),
+    date: new Date(),
+    notes: notes || ''
+  });
+
   res.status(200).json({
     status: 'success',
-    data: { payroll },
+    data: { payroll, payment },
   });
 });
 
@@ -368,18 +424,7 @@ exports.addAdjustment = catchAsync(async (req, res, next) => {
   let payroll = await Payroll.findOne({ where: { employeeId, month } });
   const breakdown = await calculateSalaryBreakdown(employeeId, month);
 
-  const adjustment = {
-    amount: parseFloat(amount),
-    description: description || 'One-time adjustment',
-    date: new Date().toISOString()
-  };
-
   if (!payroll) {
-    const details = {
-      logs: breakdown.logs,
-      adjustments: [adjustment]
-    };
-
     const updatedBonus = breakdown.bonusEarned + parseFloat(amount);
     const updatedTotal = breakdown.totalEarned + parseFloat(amount);
 
@@ -393,22 +438,22 @@ exports.addAdjustment = catchAsync(async (req, res, next) => {
       totalEarned: updatedTotal,
       totalPaid: 0,
       status: 'unpaid',
-      details
+      details: { logs: breakdown.logs }
     });
   } else {
-    const details = payroll.details || {};
-    if (!details.adjustments || !Array.isArray(details.adjustments)) {
-      details.adjustments = [];
-    }
-    details.adjustments.push(adjustment);
-    details.logs = breakdown.logs;
-
     payroll.bonusEarned = parseFloat(payroll.bonusEarned) + parseFloat(amount);
     payroll.totalEarned = parseFloat(payroll.totalEarned) + parseFloat(amount);
     payroll.status = payroll.totalPaid >= payroll.totalEarned ? 'paid' : (payroll.totalPaid > 0 ? 'partially_paid' : 'unpaid');
-    payroll.details = details;
+    payroll.details = { logs: breakdown.logs };
     await payroll.save();
   }
+
+  const adjustment = await PayrollAdjustment.create({
+    payrollId: payroll.id,
+    amount: parseFloat(amount),
+    description: description || 'One-time adjustment',
+    date: new Date()
+  });
 
   res.status(200).json({
     status: 'success',

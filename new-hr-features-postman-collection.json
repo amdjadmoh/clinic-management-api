@@ -1,0 +1,289 @@
+{
+  "info": {
+    "_postman_id": "76d54238-d9a2-4aef-b2a1-12f5a6b0c239",
+    "name": "New HR and Payroll Enhancements APIs",
+    "description": "Postman Collection containing all the newly added endpoints for Leaves Management, Employee Files, One-time Monthly Adjustments, Biometric Device Mappings, and JSON User Settings.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Biometric Mapping",
+      "item": [
+        {
+          "name": "Get Biometric Device Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/zkteco/device-users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zkteco",
+                "device-users"
+              ]
+            },
+            "description": "Retrieves the list of registered users on the biometric attendance device (reading local USERINFO.csv in development, actual device in production)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Leaves Management",
+      "item": [
+        {
+          "name": "Create Leave Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": 1,\n  \"startDate\": \"2026-05-15\",\n  \"endDate\": \"2026-05-17\",\n  \"type\": \"annual\",\n  \"reason\": \"Family vacation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employees/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "leaves"
+              ]
+            },
+            "description": "Submit a leave or vacation request for an employee. Leaves of type 'unpaid' will dock monthly salary, while other approved leaves (annual, sick) are excused and fully paid."
+          },
+          "response": []
+        },
+        {
+          "name": "List All Leave Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/employees/leaves?status=pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "leaves"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "Optional status filter: pending, approved, or rejected"
+                }
+              ]
+            },
+            "description": "List all leave requests with optional filters by status or employeeId."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve or Reject Leave Request",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employees/leaves/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "leaves",
+                "1"
+              ]
+            },
+            "description": "Approve or reject a submitted leave request by ID. Changes the status to 'approved' or 'rejected'."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Specific Employee Leaves",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/employees/1/leaves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "1",
+                "leaves"
+              ]
+            },
+            "description": "Retrieves the full list of leave requests belonging to a specific employee."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Employee Files",
+      "item": [
+        {
+          "name": "Get Employee Files List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/employees/1/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "1",
+                "files"
+              ]
+            },
+            "description": "Lists all documents, diplomas, or certificates uploaded specifically inside the folder of employee ID 1."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payroll Payments & Adjustments",
+      "item": [
+        {
+          "name": "Pay Employee (Tranches/Installments)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": 1,\n  \"month\": \"2026-05\",\n  \"paymentAmount\": 20000,\n  \"notes\": \"First payment installment (tranche)\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payroll",
+                "pay"
+              ]
+            },
+            "description": "Post a payment to an employee's monthly payroll. Can be paid in installments/tranches. Each payment is permanently archived in the payments history log with date and custom notes."
+          },
+          "response": []
+        },
+        {
+          "name": "Add One-time Monthly Adjustment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": 1,\n  \"month\": \"2026-05\",\n  \"amount\": 150,\n  \"description\": \"Receptionist worked extra shift on Saturday\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll/adjustment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payroll",
+                "adjustment"
+              ]
+            },
+            "description": "Record a one-time adjustment (bonus if positive, deduction if negative) for a specific employee and target month. Automatically updates totalEarned."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Employee Payroll History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payroll/history/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payroll",
+                "history",
+                "1"
+              ]
+            },
+            "description": "Retrieve the complete historical list of monthly payroll records, payments (with dates/notes), adjustments, and calculation logs for a specific employee."
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "User Profile Settings JSON",
+      "item": [
+        {
+          "name": "Update User Settings JSON Payload",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settings\": {\n    \"theme\": \"dark\",\n    \"sidebarCollapsed\": true,\n    \"language\": \"ar\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "1"
+              ]
+            },
+            "description": "Store arbitrary application configurations, UI preferences, or any JSON metadata on the user's account profile settings field."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ]
+}

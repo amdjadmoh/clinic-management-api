@@ -74,4 +74,13 @@ const Payroll = db.define('payroll', {
 Employee.hasMany(Payroll, { foreignKey: 'employeeId', onDelete: 'CASCADE' });
 Payroll.belongsTo(Employee, { foreignKey: 'employeeId' });
 
+const PayrollPayment = require('./PayrollPayment');
+const PayrollAdjustment = require('./PayrollAdjustment');
+
+Payroll.hasMany(PayrollPayment, { foreignKey: 'payrollId', as: 'payments', onDelete: 'CASCADE' });
+PayrollPayment.belongsTo(Payroll, { foreignKey: 'payrollId' });
+
+Payroll.hasMany(PayrollAdjustment, { foreignKey: 'payrollId', as: 'adjustments', onDelete: 'CASCADE' });
+PayrollAdjustment.belongsTo(Payroll, { foreignKey: 'payrollId' });
+
 module.exports = Payroll;

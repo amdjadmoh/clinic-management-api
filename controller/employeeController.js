@@ -4,10 +4,39 @@ const EmployeePaymentSetting = require('../models/EmployeePaymentSetting');
 const Attendance = require('../models/Attendance');
 const Dep = require('../models/Dep');
 const File = require('../models/Files');
+const EmployeeFile = require('../models/EmployeeFile');
 const { Op } = require('sequelize');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const moment = require('moment-timezone');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+const { v4: uuidv4 } = require('uuid');
+
+const uploadDirRoot = process.env.FILE_UPLOAD_DIR 
+  ? process.env.FILE_UPLOAD_DIR.trim().replace(/^"(.*)"$/, '$1')
+  : __dirname;
+
+const employeeUploadStorage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    const uploadDir = path.join(uploadDirRoot, 'uploads', 'employee_documents');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function(req, file, cb) {
+    const fileExt = path.extname(file.originalname);
+    const fileName = `${uuidv4()}${fileExt}`;
+    cb(null, fileName);
+  }
+});
+
+exports.uploadEmployeeFileMiddleware = multer({
+  storage: employeeUploadStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+}).single('file');
 
 // Jobs
 exports.createJob = catchAsync(async (req, res, next) => {
@@ -70,8 +99,8 @@ exports.deleteJob = catchAsync(async (req, res, next) => {
 
 // Employees
 exports.createEmployee = catchAsync(async (req, res, next) => {
-  const { fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber } = req.body;
-  const employee = await Employee.create({ fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber });
+  const { fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber, socialSecurityNumber } = req.body;
+  const employee = await Employee.create({ fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber, socialSecurityNumber });
 
   // If a jobId is provided, find the job to get its default settings
   if (jobId) {
@@ -132,7 +161,7 @@ exports.getEmployee = catchAsync(async (req, res, next) => {
 });
 
 exports.updateEmployee = catchAsync(async (req, res, next) => {
-  const { fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber } = req.body;
+  const { fullName, userId, doctorId, jobId, startDate, status, zktecoId, phoneNumber, depId, bankAccountNumber, socialSecurityNumber } = req.body;
   const employee = await Employee.findByPk(req.params.id);
   if (!employee) {
     return next(new AppError('Employee not found', 404));
@@ -150,6 +179,7 @@ exports.updateEmployee = catchAsync(async (req, res, next) => {
   employee.phoneNumber = phoneNumber !== undefined ? phoneNumber : employee.phoneNumber;
   employee.depId = depId !== undefined ? depId : employee.depId;
   employee.bankAccountNumber = bankAccountNumber !== undefined ? bankAccountNumber : employee.bankAccountNumber;
+  employee.socialSecurityNumber = socialSecurityNumber !== undefined ? socialSecurityNumber : employee.socialSecurityNumber;
   await employee.save();
 
   // If jobId changed, fetch new job defaultSettings and override employee settings
@@ -200,11 +230,8 @@ exports.getEmployeeFiles = catchAsync(async (req, res, next) => {
     return next(new AppError('Employee not found', 404));
   }
 
-  const files = await File.findAll({
-    where: {
-      recipientType: 'employee',
-      recipientId: employeeId
-    },
+  const files = await EmployeeFile.findAll({
+    where: { employeeId },
     order: [['createdAt', 'DESC']]
   });
 
@@ -214,6 +241,87 @@ exports.getEmployeeFiles = catchAsync(async (req, res, next) => {
     data: {
       files
     }
+  });
+});
+
+exports.uploadEmployeeFile = catchAsync(async (req, res, next) => {
+  const employeeId = req.params.id;
+  const { documentType, description } = req.body;
+
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) {
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
+    return next(new AppError('Employee not found', 404));
+  }
+
+  if (!req.file) {
+    return next(new AppError('Please provide a file to upload', 400));
+  }
+
+  const employeeFile = await EmployeeFile.create({
+    employeeId,
+    filename: req.file.originalname,
+    filePath: req.file.path,
+    fileSize: req.file.size,
+    fileType: req.file.mimetype,
+    documentType: documentType || 'other',
+    description: description || null
+  });
+
+  res.status(201).json({
+    status: 'success',
+    data: {
+      file: employeeFile
+    }
+  });
+});
+
+exports.downloadEmployeeFile = catchAsync(async (req, res, next) => {
+  const { id, fileId } = req.params;
+
+  const employeeFile = await EmployeeFile.findOne({
+    where: {
+      id: fileId,
+      employeeId: id
+    }
+  });
+
+  if (!employeeFile) {
+    return next(new AppError('Employee file not found', 404));
+  }
+
+  if (!fs.existsSync(employeeFile.filePath)) {
+    return next(new AppError('Physical file not found on the server', 404));
+  }
+
+  res.setHeader('Content-Disposition', `attachment; filename="${employeeFile.filename}"`);
+  res.setHeader('Content-Type', employeeFile.fileType);
+
+  const fileStream = fs.createReadStream(employeeFile.filePath);
+  fileStream.pipe(res);
+});
+
+exports.deleteEmployeeFile = catchAsync(async (req, res, next) => {
+  const { id, fileId } = req.params;
+
+  const employeeFile = await EmployeeFile.findOne({
+    where: {
+      id: fileId,
+      employeeId: id
+    }
+  });
+
+  if (!employeeFile) {
+    return next(new AppError('Employee file not found', 404));
+  }
+
+  await employeeFile.destroy();
+
+  res.status(204).json({
+    status: 'success',
+    data: null
   });
 });
 
