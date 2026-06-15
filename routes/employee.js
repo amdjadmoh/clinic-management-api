@@ -51,4 +51,10 @@ router.route('/:employeeId/payment-settings')
 router.route('/attendance')
   .post(employeeController.recordAttendance);
 
+router.route('/:id/schedule')
+  .get(employeeController.getSchedule)
+  .put(employeeController.setSchedule)
+  .delete(employeeController.deleteSchedule);
+
 module.exports = router;
+

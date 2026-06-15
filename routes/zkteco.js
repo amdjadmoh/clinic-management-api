@@ -9,4 +9,7 @@ router.route('/sync')
 router.route('/device-users')
   .get(zktecoController.getDeviceUsers);
 
+router.route('/simulate')
+  .post(zktecoController.simulateScan);
+
 module.exports = router;

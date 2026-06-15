@@ -49,10 +49,12 @@ app.use(express.urlencoded({ extended: true }));
 
 const buildPath = path.join(__dirname, 'dist');
 const buildPath2 = path.join(__dirname, 'dist2');
+const hrDashboardPath = path.join(__dirname, 'hr-dashboard');
 
 // Serve static assets at root level
 app.use(express.static(buildPath));
 app.use(express.static(buildPath2));
+app.use('/hr-dashboard', express.static(hrDashboardPath));
 
 // Also serve HTML files on specific routes
 app.get('/labo', (req, res) => {
@@ -60,6 +62,9 @@ app.get('/labo', (req, res) => {
 });
 app.get('/reception', (req, res) => {
   res.sendFile(path.join(buildPath2, 'index.html'));
+});
+app.get('/hr-dashboard', (req, res) => {
+  res.sendFile(path.join(hrDashboardPath, 'index.html'));
 });
 app.use('/users', usersroutes);
 app.use('/doctors', doctorsroutes);
@@ -95,6 +100,8 @@ app.use('/laboPrices', require('./routes/laboPrices'));
 app.use('/employees', require('./routes/employee'));
 app.use('/payroll', require('./routes/payroll'));
 app.use('/zkteco', require('./routes/zkteco'));
+app.use('/ats', require('./routes/ats'));
+
 const { notficationController } = require('./controller/notificationController');
 // Send appointment notifications every hour
 const cron = require('node-cron');

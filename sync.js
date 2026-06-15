@@ -50,6 +50,10 @@ const PayrollPayment = require('./models/PayrollPayment');
 const PayrollAdjustment = require('./models/PayrollAdjustment');
 const Leave = require('./models/Leave');
 const EmployeeFile = require('./models/EmployeeFile');
+const EmployeeSchedule = require('./models/EmployeeSchedule');
+const Ats = require('./models/Ats');
+const AtsSalaryHistory = require('./models/AtsSalaryHistory');
+
 
 // Modify your sync code
 (async () => {

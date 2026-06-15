@@ -1,6 +1,7 @@
 const Employee = require('../models/Employee');
 const Job = require('../models/Job');
 const EmployeePaymentSetting = require('../models/EmployeePaymentSetting');
+const EmployeeSchedule = require('../models/EmployeeSchedule');
 const Attendance = require('../models/Attendance');
 const Dep = require('../models/Dep');
 const File = require('../models/Files');
@@ -424,3 +425,81 @@ exports.getEmployeeAttendance = catchAsync(async (req, res, next) => {
   });
 });
 
+// Schedule CRUD
+exports.getSchedule = catchAsync(async (req, res, next) => {
+  const employeeId = req.params.id;
+
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) {
+    return next(new AppError('Employee not found', 404));
+  }
+
+  const schedule = await EmployeeSchedule.findAll({
+    where: { employeeId },
+    order: [['dayOfWeek', 'ASC']]
+  });
+
+  res.status(200).json({
+    status: 'success',
+    data: { schedule }
+  });
+});
+
+exports.setSchedule = catchAsync(async (req, res, next) => {
+  const employeeId = req.params.id;
+  const { schedule } = req.body; // array of { dayOfWeek, startTime, endTime }
+
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) {
+    return next(new AppError('Employee not found', 404));
+  }
+
+  if (!schedule || !Array.isArray(schedule)) {
+    return next(new AppError('Please provide a schedule array with { dayOfWeek, startTime, endTime } objects', 400));
+  }
+
+  // Validate entries
+  for (const entry of schedule) {
+    if (entry.dayOfWeek === undefined || !entry.startTime || !entry.endTime) {
+      return next(new AppError('Each schedule entry must have dayOfWeek (0-6), startTime, and endTime', 400));
+    }
+    if (entry.dayOfWeek < 0 || entry.dayOfWeek > 6) {
+      return next(new AppError('dayOfWeek must be between 0 (Sunday) and 6 (Saturday)', 400));
+    }
+  }
+
+  // Replace existing schedule
+  await EmployeeSchedule.destroy({ where: { employeeId } });
+
+  const created = [];
+  for (const entry of schedule) {
+    const row = await EmployeeSchedule.create({
+      employeeId,
+      dayOfWeek: entry.dayOfWeek,
+      startTime: entry.startTime,
+      endTime: entry.endTime
+    });
+    created.push(row);
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { schedule: created }
+  });
+});
+
+exports.deleteSchedule = catchAsync(async (req, res, next) => {
+  const employeeId = req.params.id;
+
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) {
+    return next(new AppError('Employee not found', 404));
+  }
+
+  await EmployeeSchedule.destroy({ where: { employeeId } });
+
+  res.status(204).json({
+    status: 'success',
+    data: null
+  });
+});

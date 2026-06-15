@@ -51,9 +51,25 @@ const Payroll = db.define('payroll', {
     defaultValue: 0.0,
   },
   status: {
-    type: sequelize.STRING, // e.g. 'unpaid', 'partially_paid', 'paid'
+    type: sequelize.STRING, // 'draft', 'confirmed', 'partially_paid', 'paid'
     allowNull: false,
-    defaultValue: 'unpaid',
+    defaultValue: 'draft',
+  },
+  confirmedAt: {
+    type: sequelize.DATE,
+    allowNull: true,
+  },
+
+  settingsSnapshot: {
+    type: sequelize.TEXT, // JSON snapshot of EmployeePaymentSettings at confirmation time
+    allowNull: true,
+    get() {
+      const rawValue = this.getDataValue('settingsSnapshot');
+      return rawValue ? JSON.parse(rawValue) : null;
+    },
+    set(value) {
+      this.setDataValue('settingsSnapshot', value ? JSON.stringify(value) : null);
+    }
   },
   details: {
     type: sequelize.TEXT, // optional JSON breakdown stored as string

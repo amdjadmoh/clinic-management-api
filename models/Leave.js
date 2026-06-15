@@ -37,6 +37,16 @@ const Leave = db.define('leave', {
   reason: {
     type: sequelize.TEXT,
     allowNull: true,
+  },
+  paidPercentage: {
+    type: sequelize.DECIMAL, // 0-100: how much of the leave is paid. Official holiday = 100, other reasons can be less.
+    allowNull: false,
+    defaultValue: 100,
+  },
+  paidDays: {
+    type: sequelize.DECIMAL, // For scheduled employees: auto-calculated on approval. For non-scheduled: admin enters manually.
+    allowNull: true,
+    defaultValue: null,
   }
 }, {
   tableName: 'leaves',

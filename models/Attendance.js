@@ -21,11 +21,16 @@ const Attendance = db.define('attendance', {
     allowNull: false,
   },
   clockIn: {
-    type: sequelize.STRING, // Store as string like "09:00:00" or simple datetime
+    // Full datetime string: "YYYY-MM-DD HH:mm:ss"
+    // Used as the unique key per (employeeId, clockIn) for upsert-safe syncing.
+    // A null clockIn means the employee was only seen leaving (missed clock-in).
+    type: sequelize.STRING,
     allowNull: true,
   },
   clockOut: {
-    type: sequelize.STRING, // Store as string like "17:00:00" or simple datetime
+    // Full datetime string: "YYYY-MM-DD HH:mm:ss"
+    // A null clockOut means the shift was never closed (missed clock-out or still open).
+    type: sequelize.STRING,
     allowNull: true,
   },
   status: {
