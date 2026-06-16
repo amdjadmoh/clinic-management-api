@@ -325,10 +325,12 @@ async function pullEmployeesFromZKTeco(queryInterface) {
     console.log('✔ Connected to ZKTeco device');
 
     // Pull all registered users from the device
-    const users = await zkInstance.getUsers();
+    // node-zklib returns { data: [...], err: ... }, not the array directly
+    const response = await zkInstance.getUsers();
     await zkInstance.disconnect();
 
-    if (!users || users.length === 0) {
+    const users = (response && response.data) || [];
+    if (users.length === 0) {
       console.log('ℹ No users found on ZKTeco device');
       return;
     }
