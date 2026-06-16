@@ -284,6 +284,9 @@ module.exports = {
     } catch (_) {
       // users table may not exist in some envs — safe to ignore
     }
+
+    // ── 14. Pull employees from ZKTeco device ──────────────────────────
+    await pullEmployeesFromZKTeco(queryInterface);
   },
 
   down: async (queryInterface) => {
@@ -302,3 +305,70 @@ module.exports = {
     await queryInterface.dropTable('jobs');
   },
 };
+
+// ---------------------------------------------------------------------------
+// Helper: Pull employees from ZKTeco device and insert into database
+// ---------------------------------------------------------------------------
+
+async function pullEmployeesFromZKTeco(queryInterface) {
+  const ZKLib = require('node-zklib');
+
+  const deviceIp = process.env.ZKTECO_DEVICE_IP || '192.168.1.55';
+  const port = parseInt(process.env.ZKTECO_PORT, 10) || 4370;
+
+  console.log(`\n🔗 Connecting to ZKTeco device at ${deviceIp}:${port}...`);
+
+  const zkInstance = new ZKLib(deviceIp, port, 4000, 4000);
+
+  try {
+    await zkInstance.createSocket();
+    console.log('✔ Connected to ZKTeco device');
+
+    // Pull all registered users from the device
+    const users = await zkInstance.getUsers();
+    await zkInstance.disconnect();
+
+    if (!users || users.length === 0) {
+      console.log('ℹ No users found on ZKTeco device');
+      return;
+    }
+
+    console.log(`📋 Found ${users.length} users on device`);
+
+    // Get existing employees to avoid duplicates
+    const existingRows = await queryInterface.sequelize.query(
+      `SELECT "zktecoId" FROM "employees" WHERE "zktecoId" IS NOT NULL`,
+      { type: queryInterface.sequelize.QueryTypes.SELECT }
+    );
+    const existingZktecoIds = new Set(existingRows.map(r => r.zktecoId));
+
+    // Insert new employees
+    let created = 0;
+
+    for (const user of users) {
+      const userId = user.userId || user.uid;
+      const name = user.name;
+
+      if (!userId || !name) continue;
+
+      const zkId = String(userId);
+      if (existingZktecoIds.has(zkId)) continue;
+
+      await queryInterface.bulkInsert('employees', [{
+        fullName:   name,
+        zktecoId:   zkId,
+        startDate:  '2026-01-01',
+        status:     'active',
+      }]);
+
+      existingZktecoIds.add(zkId);
+      created++;
+      console.log(`  ✔ Created employee: ${name} (zktecoId: ${zkId})`);
+    }
+
+    console.log(`\n✅ Employee sync complete: ${created} created, ${users.length - created} already existed`);
+  } catch (error) {
+    console.error(`\n⚠ Could not connect to ZKTeco device: ${error.message}`);
+    console.error('  Employees table was created successfully. You can sync later via POST /zkteco/sync');
+  }
+}
