@@ -48,6 +48,9 @@ router.route('/:id/files/:fileId')
 router.route('/:employeeId/payment-settings')
   .put(employeeController.updateEmployeePaymentSettings);
 
+router.route('/attendance/latest')
+  .get(employeeController.getLatestAttendances);
+
 router.route('/attendance')
   .post(employeeController.recordAttendance);
 

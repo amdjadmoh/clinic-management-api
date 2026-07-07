@@ -510,6 +510,33 @@ exports.getEmployeeAttendance = catchAsync(async (req, res, next) => {
   });
 });
 
+exports.getLatestAttendances = catchAsync(async (req, res, next) => {
+  const { month, startDate, endDate, limit } = req.query;
+
+  const whereClause = {};
+
+  if (month) {
+    const start = moment(month, 'YYYY-MM').startOf('month').format('YYYY-MM-DD');
+    const end = moment(month, 'YYYY-MM').endOf('month').format('YYYY-MM-DD');
+    whereClause.date = { [Op.between]: [start, end] };
+  } else if (startDate && endDate) {
+    whereClause.date = { [Op.between]: [startDate, endDate] };
+  }
+
+  const attendances = await Attendance.findAll({
+    where: whereClause,
+    include: [{ model: Employee, attributes: ['id', 'fullName', 'zktecoId'] }],
+    order: [['date', 'DESC'], ['clockIn', 'DESC']],
+    ...(limit ? { limit: parseInt(limit, 10) } : {}),
+  });
+
+  res.status(200).json({
+    status: 'success',
+    results: attendances.length,
+    data: { attendances },
+  });
+});
+
 // Schedule CRUD
 exports.getSchedule = catchAsync(async (req, res, next) => {
   const employeeId = req.params.id;

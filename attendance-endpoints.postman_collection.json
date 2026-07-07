@@ -1,0 +1,99 @@
+{
+  "info": {
+    "name": "Attendance Endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Get Latest Attendances (all employees)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/employees/attendance/latest",
+          "host": ["{{base_url}}"],
+          "path": ["employees", "attendance", "latest"]
+        }
+      }
+    },
+    {
+      "name": "Get Latest Attendances (filtered by month)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/employees/attendance/latest?month=2026-07",
+          "host": ["{{base_url}}"],
+          "path": ["employees", "attendance", "latest"],
+          "query": [
+            { "key": "month", "value": "2026-07" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Latest Attendances (limited)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/employees/attendance/latest?limit=20",
+          "host": ["{{base_url}}"],
+          "path": ["employees", "attendance", "latest"],
+          "query": [
+            { "key": "limit", "value": "20" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Employee Attendance (specific employee)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/employees/1/attendance",
+          "host": ["{{base_url}}"],
+          "path": ["employees", "1", "attendance"]
+        }
+      }
+    },
+    {
+      "name": "Get Employee Attendance (by month)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/employees/1/attendance?month=2026-07",
+          "host": ["{{base_url}}"],
+          "path": ["employees", "1", "attendance"],
+          "query": [
+            { "key": "month", "value": "2026-07" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Employee Attendance (by date range)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/employees/1/attendance?startDate=2026-07-01&endDate=2026-07-07",
+          "host": ["{{base_url}}"],
+          "path": ["employees", "1", "attendance"],
+          "query": [
+            { "key": "startDate", "value": "2026-07-01" },
+            { "key": "endDate", "value": "2026-07-07" }
+          ]
+        }
+      }
+    }
+  ]
+}
