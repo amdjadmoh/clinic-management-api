@@ -1,0 +1,348 @@
+{
+  "info": {
+    "name": "HR & Payroll - Attendance Edit + Night Shift + Leaves",
+    "description": "Endpoints modified or added during the HR system enhancement session (June 2026). Includes: attendance edit/delete, night shift schedule, leave auto-calculation, payroll with commissions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Schedule",
+      "item": [
+        {
+          "name": "Get Employee Schedule",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/employees/{{employeeId}}/schedule"
+          }
+        },
+        {
+          "name": "Set Schedule (Day Shift)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/employees/{{employeeId}}/schedule",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule\": [\n    { \"dayOfWeek\": 1, \"startTime\": \"08:00:00\", \"endTime\": \"16:00:00\" },\n    { \"dayOfWeek\": 2, \"startTime\": \"08:00:00\", \"endTime\": \"16:00:00\" },\n    { \"dayOfWeek\": 3, \"startTime\": \"08:00:00\", \"endTime\": \"16:00:00\" },\n    { \"dayOfWeek\": 4, \"startTime\": \"08:00:00\", \"endTime\": \"16:00:00\" },\n    { \"dayOfWeek\": 5, \"startTime\": \"08:00:00\", \"endTime\": \"16:00:00\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Set Schedule (Night Shift - crosses midnight)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/employees/{{employeeId}}/schedule",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule\": [\n    { \"dayOfWeek\": 1, \"startTime\": \"22:00:00\", \"endTime\": \"06:00:00\" },\n    { \"dayOfWeek\": 2, \"startTime\": \"22:00:00\", \"endTime\": \"06:00:00\" },\n    { \"dayOfWeek\": 3, \"startTime\": \"22:00:00\", \"endTime\": \"06:00:00\" },\n    { \"dayOfWeek\": 4, \"startTime\": \"22:00:00\", \"endTime\": \"06:00:00\" },\n    { \"dayOfWeek\": 5, \"startTime\": \"22:00:00\", \"endTime\": \"06:00:00\" }\n  ]\n}\n// dayOfWeek: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat\n// endTime < startTime = night shift (crosses midnight)"
+            }
+          }
+        },
+        {
+          "name": "Delete Schedule",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/employees/{{employeeId}}/schedule"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "Get Employee Attendance (by month)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/employees/{{employeeId}}/attendance?month=2026-06",
+              "host": ["{{baseUrl}}"],
+              "path": ["employees", "{{employeeId}}", "attendance"],
+              "query": [
+                { "key": "month", "value": "2026-06" },
+                { "key": "startDate", "value": "2026-06-01", "disabled": true },
+                { "key": "endDate", "value": "2026-06-30", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record Attendance (Day Shift)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/employees/attendance",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employeeId}},\n  \"date\": \"2026-06-01\",\n  \"clockIn\": \"08:00:00\",\n  \"clockOut\": \"16:00:00\",\n  \"status\": \"present\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Record Attendance (Night Shift - FIXED)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/employees/attendance",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employeeId}},\n  \"date\": \"2026-06-01\",\n  \"clockIn\": \"22:00:00\",\n  \"clockOut\": \"06:00:00\",\n  \"status\": \"present\"\n}\n// FIXED: hoursWorked now = 8 (was 0 before fix)\n// clockOut < clockIn triggers +1 day for midnight crossing\n// clockIn stored as full datetime: \"2026-06-01 22:00:00\"\n// clockOut stored as: \"2026-06-02 06:00:00\""
+            }
+          }
+        },
+        {
+          "name": "Update Attendance Record (NEW - PUT by ID)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/employees/attendance/{{attendanceId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clockIn\": \"09:00:00\",\n  \"clockOut\": \"17:00:00\",\n  \"status\": \"late\",\n  \"date\": \"2026-06-01\"\n}\n// All fields optional - only changed fields are updated\n// hoursWorked recalculated automatically\n// Night shift detection works (clockOut < clockIn = +1 day)\n// Returns 409 if clockIn collides with another record"
+            }
+          }
+        },
+        {
+          "name": "Delete Attendance Record (NEW - DELETE by ID)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/employees/attendance/{{attendanceId}}",
+            "description": "Deletes an attendance record. Returns 409 if the record is an open shift (clockIn without clockOut) to prevent ZKTeco sync corruption."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leave Requests",
+      "item": [
+        {
+          "name": "Create Leave Request",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/employees/leaves",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employeeId}},\n  \"startDate\": \"2026-06-10\",\n  \"endDate\": \"2026-06-12\",\n  \"type\": \"annual\",\n  \"reason\": \"Family vacation\",\n  \"paidPercentage\": 100\n}\n// type: annual, sick, unpaid, maternity, other\n// paidPercentage: 0-100 (default 100)"
+            }
+          }
+        },
+        {
+          "name": "Approve Leave (auto-calculates paidDays from schedule)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/employees/leaves/{{leaveId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"paidPercentage\": 100\n}\n// paidDays auto-calculated from employee schedule\n// Only counts days where dayOfWeek matches schedule\n// paidPercentage applies: 50% = half effective paid days"
+            }
+          }
+        },
+        {
+          "name": "Get All Leave Requests",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/employees/leaves?status=pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["employees", "leaves"],
+              "query": [
+                { "key": "status", "value": "pending", "description": "pending | approved | rejected" },
+                { "key": "employeeId", "value": "{{employeeId}}", "disabled": true }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Settings",
+      "item": [
+        {
+          "name": "Update Employee Payment Settings",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/employees/{{employeeId}}/payment-settings",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settings\": [\n    { \"type\": \"fixed_monthly\", \"value\": 50000, \"expectedDays\": 22 },\n    { \"type\": \"hourly\", \"value\": 600 },\n    { \"type\": \"consultation_percentage\", \"value\": 30 },\n    { \"type\": \"procedure_percentage\", \"value\": 15, \"procedureId\": null },\n    { \"type\": \"fixed_extra_bonus\", \"value\": 5000, \"description\": \"Transport allowance\" }\n  ]\n}\n// Types: fixed_monthly, hourly, consultation_percentage, procedure_percentage, fixed_extra_bonus\n// expectedDays: used for daily rate calculation (default 30)\n// procedureId: null = all procedures, or specific procedure ID"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payroll",
+      "item": [
+        {
+          "name": "Calculate / Get Payroll Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/payroll?month=2026-06",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll"],
+              "query": [{ "key": "month", "value": "2026-06" }]
+            },
+            "description": "Calculates payroll for all active employees. Returns breakdown with logs showing: schedule detection, daily rates, absences, leave adjustments, commissions."
+          }
+        },
+        {
+          "name": "Confirm Payroll (Bulk - all employees)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payroll/confirm",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"month\": \"2026-06\"\n}\n// Omit employeeId to confirm ALL employees\n// Freezes calculated values - future setting changes won't affect"
+            }
+          }
+        },
+        {
+          "name": "Confirm Payroll (Single employee)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payroll/confirm",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employeeId}},\n  \"month\": \"2026-06\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Pay Employee",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payroll/pay",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employeeId}},\n  \"month\": \"2026-06\",\n  \"paymentAmount\": 50000,\n  \"notes\": \"June salary payment\"\n}\n// Auto-confirms if draft\n// Status: partially_paid or paid (when totalPaid >= totalEarned)"
+            }
+          }
+        },
+        {
+          "name": "Add Payroll Adjustment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payroll/adjustment",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employeeId}},\n  \"month\": \"2026-06\",\n  \"amount\": 5000,\n  \"description\": \"One-time bonus\"\n}\n// Positive = bonus, Negative = deduction\n// Only works on draft payrolls (unlock first if frozen)"
+            }
+          }
+        },
+        {
+          "name": "Unlock Payroll",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/payroll/unlock",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employeeId}},\n  \"month\": \"2026-06\"\n}\n// Reverts confirmed → draft for corrections\n// Cannot unlock if payments exist (status: paid/partially_paid)"
+            }
+          }
+        },
+        {
+          "name": "Get Employee Payroll History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payroll/history/{{employeeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employees (CRUD)",
+      "item": [
+        {
+          "name": "Create Employee",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/employees",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"New Employee\",\n  \"startDate\": \"2026-06-01\",\n  \"status\": \"active\",\n  \"jobId\": null,\n  \"depId\": null,\n  \"doctorId\": null,\n  \"zktecoId\": null,\n  \"phoneNumber\": null,\n  \"bankAccountNumber\": null,\n  \"socialSecurityNumber\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Get All Employees",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/employees"
+          }
+        },
+        {
+          "name": "Get Single Employee",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/employees/{{employeeId}}"
+          }
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/employees/{{employeeId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Updated Name\",\n  \"doctorId\": 1\n}\n// All fields optional - only changed fields are updated"
+            }
+          }
+        },
+        {
+          "name": "Delete Employee (soft - sets status=deleted)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/employees/{{employeeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ZKTeco",
+      "item": [
+        {
+          "name": "Sync ZKTeco Logs",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/zkteco/sync",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceIp\": \"192.168.1.55\",\n  \"port\": 4370\n}"
+            }
+          }
+        },
+        {
+          "name": "Simulate Scan (DEV only)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/zkteco/simulate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zktecoId\": \"EMP001\",\n  \"timestamp\": \"2026-06-01T08:00:00\",\n  \"punchType\": \"I\"\n}\n// punchType: I (clock-in) or O (clock-out)\n// Only works in development mode (NODE_ENV != production)"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

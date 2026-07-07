@@ -368,17 +368,27 @@ exports.recordAttendance = catchAsync(async (req, res, next) => {
   let attendance = await Attendance.findOne({ where: { employeeId, date } });
 
   let hoursWorked = 0;
+  let clockInFull = clockIn ? moment(`${date} ${clockIn}`, 'YYYY-MM-DD HH:mm:ss').format('YYYY-MM-DD HH:mm:ss') : null;
+  let clockOutFull = null;
+
   if (clockIn && clockOut) {
-    const checkInTime = moment(`${date} ${clockIn}`, 'YYYY-MM-DD HH:mm:ss');
-    const checkOutTime = moment(`${date} ${clockOut}`, 'YYYY-MM-DD HH:mm:ss');
+    const checkInTime = moment(clockInFull, 'YYYY-MM-DD HH:mm:ss');
+    let checkOutTime = moment(`${date} ${clockOut}`, 'YYYY-MM-DD HH:mm:ss');
+    // Night shift: clockOut before clockIn means the shift crosses midnight
+    if (checkOutTime.isBefore(checkInTime)) {
+      checkOutTime.add(1, 'day');
+    }
+    clockOutFull = checkOutTime.format('YYYY-MM-DD HH:mm:ss');
     const duration = moment.duration(checkOutTime.diff(checkInTime));
     hoursWorked = duration.asHours();
     if (hoursWorked < 0) hoursWorked = 0;
+  } else if (clockOut) {
+    clockOutFull = moment(`${date} ${clockOut}`, 'YYYY-MM-DD HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
   }
 
   if (attendance) {
-    attendance.clockIn = clockIn || attendance.clockIn;
-    attendance.clockOut = clockOut || attendance.clockOut;
+    attendance.clockIn = clockInFull || attendance.clockIn;
+    attendance.clockOut = clockOutFull || attendance.clockOut;
     attendance.status = status || attendance.status;
     attendance.hoursWorked = hoursWorked || attendance.hoursWorked;
     await attendance.save();
@@ -386,8 +396,8 @@ exports.recordAttendance = catchAsync(async (req, res, next) => {
     attendance = await Attendance.create({
       employeeId,
       date,
-      clockIn,
-      clockOut,
+      clockIn: clockInFull,
+      clockOut: clockOutFull,
       status: status || 'present',
       hoursWorked,
     });
@@ -396,6 +406,81 @@ exports.recordAttendance = catchAsync(async (req, res, next) => {
   res.status(200).json({
     status: 'success',
     data: { attendance },
+  });
+});
+
+exports.updateAttendance = catchAsync(async (req, res, next) => {
+  const attendance = await Attendance.findByPk(req.params.id);
+  if (!attendance) {
+    return next(new AppError('Attendance record not found', 404));
+  }
+
+  const { date, clockIn, clockOut, status } = req.body;
+
+  // Recalculate hoursWorked if clockIn/clockOut changed
+  let hoursWorked = null;
+  const effectiveClockIn = clockIn !== undefined ? clockIn : attendance.clockIn;
+  const effectiveClockOut = clockOut !== undefined ? clockOut : attendance.clockOut;
+  const effectiveDate = date || attendance.date;
+
+  if (effectiveClockIn && effectiveClockOut) {
+    // Extract just the time portion if full datetime was provided
+    const inTime = effectiveClockIn.includes(' ') ? effectiveClockIn.split(' ')[1] : effectiveClockIn;
+    const outTime = effectiveClockOut.includes(' ') ? effectiveClockOut.split(' ')[1] : effectiveClockOut;
+
+    const checkInTime = moment(`${effectiveDate} ${inTime.substring(0, 8)}`, 'YYYY-MM-DD HH:mm:ss');
+    let checkOutTime = moment(`${effectiveDate} ${outTime.substring(0, 8)}`, 'YYYY-MM-DD HH:mm:ss');
+    if (checkOutTime.isBefore(checkInTime)) {
+      checkOutTime.add(1, 'day');
+    }
+    const duration = moment.duration(checkOutTime.diff(checkInTime));
+    hoursWorked = duration.asHours();
+    if (hoursWorked < 0) hoursWorked = 0;
+
+    attendance.clockIn = checkInTime.format('YYYY-MM-DD HH:mm:ss');
+    attendance.clockOut = checkOutTime.format('YYYY-MM-DD HH:mm:ss');
+  } else {
+    if (clockIn !== undefined) attendance.clockIn = clockIn.includes(' ') ? clockIn : `${effectiveDate} ${clockIn}`;
+    if (clockOut !== undefined) attendance.clockOut = clockOut.includes(' ') ? clockOut : `${effectiveDate} ${clockOut}`;
+  }
+
+  if (date) attendance.date = date;
+  if (status) attendance.status = status;
+  if (hoursWorked !== null) attendance.hoursWorked = hoursWorked;
+
+  try {
+    await attendance.save();
+  } catch (err) {
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return next(new AppError(
+        'Another attendance record already has this clock-in time for this employee. Use a different time.',
+        409
+      ));
+    }
+    throw err;
+  }
+
+  res.status(200).json({
+    status: 'success',
+    data: { attendance },
+  });
+});
+
+exports.deleteAttendance = catchAsync(async (req, res, next) => {
+  const attendance = await Attendance.findByPk(req.params.id);
+  if (!attendance) {
+    return next(new AppError('Attendance record not found', 404));
+  }
+  if (attendance.clockIn && !attendance.clockOut) {
+    return next(new AppError(
+      'Cannot delete an open shift (clock-in without clock-out). Close the shift by adding a clock-out time first, or wait for the ZKTeco sync to process the clock-out scan.',
+      409
+    ));
+  }
+  await attendance.destroy();
+  res.status(204).json({
+    status: 'success',
+    data: null,
   });
 });
 
