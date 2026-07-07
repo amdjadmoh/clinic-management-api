@@ -326,7 +326,12 @@ function setupEventListeners() {
   elements.attendanceFilterMonth.addEventListener('change', () => loadEmployeeAttendance(state.selectedEmployeeId));
   elements.addAttendanceBtn.addEventListener('click', () => {
     document.getElementById('attendance-employee-id').value = state.selectedEmployeeId;
+    document.getElementById('attendance-record-id').value = '';
     document.getElementById('attendance-date-input').value = new Date().toISOString().split('T')[0];
+    document.getElementById('attendance-clockIn-input').value = '';
+    document.getElementById('attendance-clockOut-input').value = '';
+    document.getElementById('attendance-status-input').value = 'present';
+    document.getElementById('attendance-modal').querySelector('.modal-header h3').textContent = 'Record Manual Attendance Row';
     openModal('attendance-modal');
   });
   document.getElementById('attendance-form').addEventListener('submit', handleAttendanceSubmit);
@@ -866,7 +871,7 @@ async function handleClearSchedule(e) {
 async function loadEmployeeAttendance(empId) {
   elements.attendanceListBody.innerHTML = `
     <tr>
-      <td colspan="5" class="text-center font-muted"><i class="fa-solid fa-spinner fa-spin"></i> Retrieving attendance rows...</td>
+      <td colspan="6" class="text-center font-muted"><i class="fa-solid fa-spinner fa-spin"></i> Retrieving attendance rows...</td>
     </tr>
   `;
   
@@ -881,27 +886,56 @@ async function loadEmployeeAttendance(empId) {
     if (list.length === 0) {
       elements.attendanceListBody.innerHTML = `
         <tr>
-          <td colspan="5" class="text-center font-muted">No attendance logs logged this month</td>
+          <td colspan="6" class="text-center font-muted">No attendance logs logged this month</td>
         </tr>
       `;
       return;
     }
     
     list.forEach(row => {
+      // Format clockIn/clockOut for display: show time only if full datetime
+      const fmtTime = (val) => {
+        if (!val) return '-';
+        return val.includes(' ') ? val.split(' ')[1].substring(0, 5) : val.substring(0, 5);
+      };
+      
       elements.attendanceListBody.innerHTML += `
         <tr>
           <td><strong>${row.date}</strong></td>
-          <td>${row.clockIn || '-'}</td>
-          <td>${row.clockOut || '-'}</td>
+          <td>${fmtTime(row.clockIn)}</td>
+          <td>${fmtTime(row.clockOut)}</td>
           <td>${row.hoursWorked ? parseFloat(row.hoursWorked).toFixed(2) + ' hrs' : '-'}</td>
           <td><span class="badge ${row.status === 'present' ? 'badge-success' : 'badge-outline'}">${row.status}</span></td>
+          <td>
+            <button class="btn btn-icon btn-secondary edit-attendance-btn" data-id="${row.id}" title="Edit">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="btn btn-icon btn-danger delete-attendance-btn" data-id="${row.id}" title="Delete">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
         </tr>
       `;
+    });
+
+    elements.attendanceListBody.querySelectorAll('.edit-attendance-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rowId = parseInt(btn.getAttribute('data-id'));
+        const row = list.find(r => r.id === rowId);
+        if (row) openEditAttendanceModal(row);
+      });
+    });
+
+    elements.attendanceListBody.querySelectorAll('.delete-attendance-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rowId = parseInt(btn.getAttribute('data-id'));
+        handleDeleteAttendance(rowId);
+      });
     });
   } catch (e) {
     elements.attendanceListBody.innerHTML = `
       <tr>
-        <td colspan="5" class="text-center font-muted">Failed to retrieve attendance history</td>
+        <td colspan="6" class="text-center font-muted">Failed to retrieve attendance history</td>
       </tr>
     `;
   }
@@ -910,6 +944,7 @@ async function loadEmployeeAttendance(empId) {
 async function handleAttendanceSubmit(e) {
   e.preventDefault();
   
+  const recordId = document.getElementById('attendance-record-id').value;
   const body = {
     employeeId: parseInt(document.getElementById('attendance-employee-id').value),
     date: document.getElementById('attendance-date-input').value,
@@ -918,14 +953,40 @@ async function handleAttendanceSubmit(e) {
     status: document.getElementById('attendance-status-input').value
   };
 
+  const isEdit = !!recordId;
+  const url = isEdit ? `${API.employees}/attendance/${recordId}` : `${API.employees}/attendance`;
+  const method = isEdit ? 'PUT' : 'POST';
+
   try {
-    await request(`${API.employees}/attendance`, {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
-    
+    await request(url, { method, body: JSON.stringify(body) });
     closeAllModals();
-    showToast('Attendance recorded successfully', 'success');
+    showToast(isEdit ? 'Attendance updated' : 'Attendance recorded', 'success');
+    await loadEmployeeAttendance(state.selectedEmployeeId);
+  } catch (err) {}
+}
+
+function openEditAttendanceModal(row) {
+  document.getElementById('attendance-modal').querySelector('.modal-header h3').textContent = 'Edit Attendance Record';
+  document.getElementById('attendance-record-id').value = row.id;
+  document.getElementById('attendance-employee-id').value = state.selectedEmployeeId;
+  document.getElementById('attendance-date-input').value = row.date;
+
+  const fmtTimeVal = (val) => {
+    if (!val) return '';
+    return val.includes(' ') ? val.split(' ')[1].substring(0, 5) : val.substring(0, 5);
+  };
+
+  document.getElementById('attendance-clockIn-input').value = fmtTimeVal(row.clockIn);
+  document.getElementById('attendance-clockOut-input').value = fmtTimeVal(row.clockOut);
+  document.getElementById('attendance-status-input').value = row.status;
+  openModal('attendance-modal');
+}
+
+async function handleDeleteAttendance(recordId) {
+  if (!confirm('Delete this attendance record permanently?')) return;
+  try {
+    await request(`${API.employees}/attendance/${recordId}`, { method: 'DELETE' });
+    showToast('Attendance record deleted', 'success');
     await loadEmployeeAttendance(state.selectedEmployeeId);
   } catch (err) {}
 }

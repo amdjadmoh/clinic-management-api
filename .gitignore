@@ -143,3 +143,6 @@ vite.config.ts.timestamp-*
 *-win.exe
 postman/.dependencies/
 init.sql
+
+scratch/
+.omo/

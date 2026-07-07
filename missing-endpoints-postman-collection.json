@@ -1,0 +1,280 @@
+{
+  "info": {
+    "_postman_id": "f5d07ba9-9e8c-4a3d-b5e1-c8f7d9a0b123",
+    "name": "Missing Work Schedules & Payroll System APIs",
+    "description": "Postman Collection containing the missing endpoints for Employee Work Schedules, Employee File Upload/Download/Delete actions, Payroll Confirm & Unlock operations, and ZKTeco attendance log simulation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Work Schedules",
+      "description": "Endpoints to manage employee work schedules which are dynamically integrated into payroll calculations.",
+      "item": [
+        {
+          "name": "Get Work Schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/employees/1/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "1",
+                "schedule"
+              ]
+            },
+            "description": "Retrieves the weekly schedule configured for a specific employee by ID, sorted chronologically by dayOfWeek (0 = Sunday to 6 = Saturday)."
+          },
+          "response": []
+        },
+        {
+          "name": "Set/Update Work Schedule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedule\": [\n    {\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"16:00\"\n    },\n    {\n      \"dayOfWeek\": 2,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"16:00\"\n    },\n    {\n      \"dayOfWeek\": 3,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"16:00\"\n    },\n    {\n      \"dayOfWeek\": 4,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"16:00\"\n    },\n    {\n      \"dayOfWeek\": 5,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"16:00\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employees/1/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "1",
+                "schedule"
+              ]
+            },
+            "description": "Sets or replaces the weekly work schedule for an employee. Day of week goes from 0 (Sunday) to 6 (Saturday). Expected times are in HH:mm format."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Work Schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/employees/1/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "1",
+                "schedule"
+              ]
+            },
+            "description": "Removes the weekly schedule configured for a specific employee, resetting them to fallback/unscheduled payroll calculations."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Employee Files Actions",
+      "description": "Additional endpoints for uploading, downloading, and deleting employee documents, diplomas, or certificates.",
+      "item": [
+        {
+          "name": "Upload Employee File",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "description": "Select the physical document file to upload (e.g. diploma.pdf, ID.jpg)",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "documentType",
+                  "value": "diploma",
+                  "description": "Optional category of the document (e.g. diploma, certificate, contract, id_proof, other)",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Medical degree certificate copy",
+                  "description": "Optional text description for this file",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/employees/1/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "1",
+                "files"
+              ]
+            },
+            "description": "Uploads a file directly into the folder of employee ID 1. Supports multipart form data uploading."
+          },
+          "response": []
+        },
+        {
+          "name": "Download Employee File",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/employees/1/files/1/download",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "1",
+                "files",
+                "1",
+                "download"
+              ]
+            },
+            "description": "Downloads the physical file content by file ID belonging to the specific employee ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Employee File",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/employees/1/files/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "employees",
+                "1",
+                "files",
+                "1"
+              ]
+            },
+            "description": "Deletes the employee file metadata row from database and deletes the physical file from the server storage."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payroll Advanced Controls",
+      "description": "Confirm and Unlock endpoints to control monthly payroll freezing and recalculation.",
+      "item": [
+        {
+          "name": "Confirm Payroll",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"month\": \"2026-05\",\n  \"employeeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payroll",
+                "confirm"
+              ]
+            },
+            "description": "Freezes the calculated payroll values for a specific month so future shifts, attendance changes, or setting overrides do not impact verified values. If `employeeId` is omitted, it performs a bulk confirm on all active employees."
+          },
+          "response": []
+        },
+        {
+          "name": "Unlock Payroll",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"month\": \"2026-05\",\n  \"employeeId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll/unlock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "payroll",
+                "unlock"
+              ]
+            },
+            "description": "Unlocks a previously confirmed payroll, reverting it to draft status. Once unlocked, values will automatically recalculate dynamically from current live configuration and settings. Cannot unlock payrolls that already have recorded payments."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "ZKTeco Simulator",
+      "description": "Simulation endpoints to trigger virtual attendance punches for development and local testing.",
+      "item": [
+        {
+          "name": "Simulate Attendance Scan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zktecoId\": \"74\",\n  \"punchType\": \"I\",\n  \"timestamp\": \"2026-05-01 08:00:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/zkteco/simulate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zkteco",
+                "simulate"
+              ]
+            },
+            "description": "Simulates a user swipe/punch at the ZKTeco device (only supported in development mode). Appends a row directly to CHECKINOUT.csv. `punchType` should be 'I' for check-in or 'O' for check-out. `timestamp` defaults to current time if omitted."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ]
+}
