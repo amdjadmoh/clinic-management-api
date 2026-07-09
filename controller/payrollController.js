@@ -7,6 +7,7 @@ const PayrollPayment = require('../models/PayrollPayment');
 const PayrollAdjustment = require('../models/PayrollAdjustment');
 const DoctorWorkLog = require('../models/DoctorLog');
 const Leave = require('../models/Leave');
+const PreDefinedProcedure = require('../models/PreDefinedProcedure');
 const catchAsync = require('../utils/catchAsync');
 const AppError = require('../utils/appError');
 const moment = require('moment-timezone');
@@ -130,6 +131,13 @@ const calculateSalaryBreakdown = async (employeeId, month) => {
     logs.push(`Schedule: works on [${[...scheduledDaySet].sort().map(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}]`);
   }
 
+  // Pre-load consultation procedure IDs
+  const consultationProcs = await PreDefinedProcedure.findAll({
+    attributes: ['id'],
+    where: { type: 'Consultation normal' },
+  });
+  const consultationProcIds = consultationProcs.map(p => p.id);
+
   for (const setting of employee.employee_payment_settings) {
     const { type, value, procedureId } = setting;
     const numericValue = parseFloat(value) || 0;
@@ -208,14 +216,15 @@ const calculateSalaryBreakdown = async (employeeId, month) => {
     }
 
     if ((type === 'patient_consultation_percentage' || type === 'consultation_percentage') && employee.doctorId) {
-      const doctorLogs = await DoctorWorkLog.findAll({
-        where: {
-          doctorID: employee.doctorId,
-          date: {
-            [Op.between]: [startOfMonth.format('YYYY-MM-DD 00:00:00'), endOfMonth.format('YYYY-MM-DD 23:59:59')],
-          }
-        }
-      });
+      const whereClause = {
+        doctorID: employee.doctorId,
+        date: {
+          [Op.between]: [startOfMonth.format('YYYY-MM-DD 00:00:00'), endOfMonth.format('YYYY-MM-DD 23:59:59')],
+        },
+        procedureID: { [Op.in]: consultationProcIds },
+      };
+
+      const doctorLogs = await DoctorWorkLog.findAll({ where: whereClause });
 
       let totalCost = 0;
       doctorLogs.forEach(l => {
@@ -233,7 +242,8 @@ const calculateSalaryBreakdown = async (employeeId, month) => {
         doctorID: employee.doctorId,
         date: {
           [Op.between]: [startOfMonth.format('YYYY-MM-DD 00:00:00'), endOfMonth.format('YYYY-MM-DD 23:59:59')],
-        }
+        },
+        procedureID: { [Op.notIn]: consultationProcIds },
       };
       if (procedureId) {
         whereClause.procedureID = procedureId;
