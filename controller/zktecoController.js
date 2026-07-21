@@ -495,14 +495,13 @@ exports.getDeviceUsers = catchAsync(async (req, res, next) => {
     const zkInstance = new ZKLib(deviceIp, port, 4000, 4000);
     try {
       await zkInstance.createSocket();
-      const users = await zkInstance.getUsers();
-      if (users && users.length > 0) {
-        for (const user of users) {
-          const userId = user.userId || user.uid;
-          const name = user.name;
-          if (userId && name) {
-            deviceUsers.push({ zktecoId: String(userId), fullName: name });
-          }
+      const result = await zkInstance.getUsers();
+      const users = result && result.data ? result.data : [];
+      for (const user of users) {
+        const userId = user.userId || user.uid;
+        const name = user.name;
+        if (userId && name) {
+          deviceUsers.push({ zktecoId: String(userId), fullName: name });
         }
       }
       await zkInstance.disconnect();
