@@ -166,23 +166,8 @@ exports.syncZktecoLogsFunction = async (deviceIp = '192.168.1.55', port = 4370) 
           const userId = cols[0];
           const name = cols[3].replace(/"/g, '');
           if (!name || name === userId) continue;
-
-          const existing = await Employee.findOne({ where: { zktecoId: String(userId) } });
-          if (!existing) {
-            const hiredDayRaw = cols[8] ? cols[8].replace(/"/g, '') : null;
-            let startDate = defaultStartDate;
-            if (hiredDayRaw) {
-              const parsedHired = moment(hiredDayRaw, 'MM/DD/YY');
-              if (parsedHired.isValid()) startDate = parsedHired.format('YYYY-MM-DD');
-            }
-            await Employee.create({
-              fullName: name,
-              zktecoId: String(userId),
-              startDate,
-              status: 'active',
-            });
-            console.log(`✔ Auto-Created Employee: ${name} (zktecoId: ${userId})`);
-          }
+          // auto-creation disabled — employees must be added manually
+          console.log(`⚠ zktecoId ${userId} (${name}) found in CSV — skipping auto-creation.`);
         }
       }
     }
@@ -228,26 +213,7 @@ exports.syncZktecoLogsFunction = async (deviceIp = '192.168.1.55', port = 4370) 
     try {
       await zkInstance.createSocket();
 
-      // Auto-import users from device
-      const users = await zkInstance.getUsers();
-      if (users && users.length > 0) {
-        for (const user of users) {
-          const userId = user.userId || user.uid;
-          const name = user.name;
-          if (!name || !userId) continue;
-
-          const existing = await Employee.findOne({ where: { zktecoId: String(userId) } });
-          if (!existing) {
-            await Employee.create({
-              fullName: name,
-              zktecoId: String(userId),
-              startDate: defaultStartDate,
-              status: 'active',
-            });
-            console.log(`✔ Auto-Created Employee from device: ${name} (zktecoId: ${userId})`);
-          }
-        }
-      }
+      // Auto-import from device disabled — employees must be added manually
 
       // Fetch raw attendance logs from device
       const rawLogs = await zkInstance.getAttendances();
@@ -287,7 +253,7 @@ exports.syncZktecoLogsFunction = async (deviceIp = '192.168.1.55', port = 4370) 
   // Load employees
   // ------------------------------------------------------------------
   const employees = await Employee.findAll({
-    where: { zktecoId: { [Op.ne]: null } },
+    where: { zktecoId: { [Op.ne]: null }, status: { [Op.ne]: 'deleted' } },
   });
 
   if (employees.length === 0) {
