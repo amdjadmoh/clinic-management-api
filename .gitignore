@@ -145,3 +145,6 @@ init.sql
 
 scratch/
 .omo/
+cost-report.md
+invoice.pdf
+invoice.html

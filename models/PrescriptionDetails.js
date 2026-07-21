@@ -39,6 +39,10 @@ const PrescriptionDetails = db.define('prescriptionDetails',{
         type:sequelize.STRING,
         allowNull:true,
     },
+    forme:{
+        type:sequelize.STRING,
+        allowNull:true,
+    },
 },{
     tableName:'prescriptionDetails',
     timestamps:true,

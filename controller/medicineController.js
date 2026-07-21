@@ -70,8 +70,12 @@ exports.deleteMedicine = catchAsync(async (req, res, next) => {
 exports.searchMedicine = catchAsync(async (req, res, next) => {
     const medicines = await Medicine.findAll({
         where: {
-            medicineComName: { [Op.iLike]: `%${req.query.name}%`, },
-    }});
+            [Op.or]: [
+                { medicineName:    { [Op.iLike]: `%${req.query.name}%` } },
+                { medicineComName: { [Op.iLike]: `%${req.query.name}%` } },
+            ],
+        },
+    });
     res.status(200).json({
         status: 'success',
         data: {
