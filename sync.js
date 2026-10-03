@@ -15,7 +15,7 @@ const ChronicDisease = require('./models/ChronicDisease');
 const Patient = require('./models/Patient');
 require('./models/PatientChronicDiseases');
 require('./models/DrugHistoryDetails');
-const  {  InvoiceProcedure , InvoiceResult,Invoice} = require('./models/Invoice');
+const  {  InvoiceProcedure , InvoiceResult,Invoice, InvoicePayment} = require('./models/Invoice');
 const DoctorLog = require('./models/DoctorLog');
 const Record = require('./models/Record');
 const {ResultTypeUrine,ResultTypeUrineOptions} =require('./models/ResultTypeUrine');
@@ -58,14 +58,8 @@ const AtsSalaryHistory = require('./models/AtsSalaryHistory');
 // Modify your sync code
 (async () => {
     try {
-     
-        
-        // Then sync models
-        await db.sync({ 
-            alter: true
-        });
-        
-        console.log('All models were synchronized successfully.');
+        console.log('Skipping db.sync() - Database is managed by migrations.');
+        // await db.sync({ alter: true });
     } catch (error) {
         console.error('Error synchronizing models:', error);
         process.exit(1);

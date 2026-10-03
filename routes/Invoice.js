@@ -55,6 +55,10 @@ router
     .get(invoiceController.getDetailedPaidInvoicesByDateRange);
     
 router
+    .route('/:id/payments')
+    .post(invoiceController.addPayment);
+
+router
     .route('/:id')
     .get(invoiceController.getInvoice)
     .patch(invoiceController.updateInvoice)

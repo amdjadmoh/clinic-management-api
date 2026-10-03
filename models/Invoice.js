@@ -21,7 +21,7 @@ const Invoice = db.define('invoice',{
         type:sequelize.STRING,
         allowNull:false,
         defaultValue:'unpaid',
-        allowedValues:['paid','unpaid'],
+        allowedValues:['paid','unpaid', 'partially_paid'],
     },
     patientID:{
         type:sequelize.INTEGER,
@@ -157,6 +157,10 @@ InvoiceResult.belongsTo(Invoice,{foreignKey:'invoiceID'});
 Invoice.hasMany(InvoiceProcedure,{foreignKey:'invoiceID',onDelete:'CASCADE'});
 InvoiceProcedure.belongsTo(Invoice,{foreignKey:'invoiceID'});
 
+const InvoicePayment = require('./InvoicePayment');
+Invoice.hasMany(InvoicePayment, { foreignKey: 'invoiceID', onDelete: 'CASCADE' });
+InvoicePayment.belongsTo(Invoice, { foreignKey: 'invoiceID' });
+
 async function updateInvoiceAmount(invoiceID){
     const invoice = await Invoice.findByPk(invoiceID);
     
@@ -178,6 +182,33 @@ async function updateInvoiceAmount(invoiceID){
     }
     
     await invoice.update({invoiceAmount:amount});
+    await updateInvoiceStatus(invoiceID);
+}
+
+async function updateInvoiceStatus(invoiceID) {
+    const invoice = await Invoice.findByPk(invoiceID);
+    if (!invoice) return;
+
+    const payments = await InvoicePayment.findAll({ where: { invoiceID: invoiceID } });
+    let totalPaid = 0;
+    for (let i = 0; i < payments.length; i++) {
+        totalPaid += Number(payments[i].amount);
+    }
+
+    const netAmount = invoice.invoiceAmount - (invoice.remise || 0);
+
+    let status = 'unpaid';
+    if (totalPaid > 0) {
+        if (totalPaid >= netAmount && netAmount > 0) {
+            status = 'paid';
+        } else {
+            status = 'partially_paid';
+        }
+    }
+
+    if (invoice.invoiceStatus !== status) {
+        await invoice.update({ invoiceStatus: status });
+    }
 }
 
 InvoiceProcedure.afterCreate(async (invoiceProcedure) => {
@@ -204,6 +235,16 @@ InvoiceResult.afterDestroy(async (invoiceResult) => {
     await updateInvoiceAmount(invoiceResult.invoiceID);
 });
 
+InvoicePayment.afterCreate(async (payment) => {
+    await updateInvoiceStatus(payment.invoiceID);
+});
 
+InvoicePayment.afterUpdate(async (payment) => {
+    await updateInvoiceStatus(payment.invoiceID);
+});
 
-module.exports = {  InvoiceProcedure , InvoiceResult,Invoice};
+InvoicePayment.afterDestroy(async (payment) => {
+    await updateInvoiceStatus(payment.invoiceID);
+});
+
+module.exports = {  InvoiceProcedure , InvoiceResult,Invoice, InvoicePayment};

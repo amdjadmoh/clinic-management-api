@@ -1,11 +1,12 @@
 const appError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const Patient = require('../models/Patient');
-const {InvoiceProcedure,InvoiceResult,Invoice} = require('../models/Invoice');
+const {InvoiceProcedure,InvoiceResult,Invoice,InvoicePayment} = require('../models/Invoice');
 const PreDefinedProcedure = require('../models/PreDefinedProcedure');
 const { Op } = require('sequelize');
 exports.getAllInvoices = catchAsync(async (req, res, next) => {
-    const invoices = await Invoice.findAll();
+    const invoices = await Invoice.findAll({
+        include: [InvoicePayment] });
     res.status(200).json({
         status: 'success',
         data: {
@@ -16,7 +17,7 @@ exports.getAllInvoices = catchAsync(async (req, res, next) => {
 );
 
 exports.getInvoice = catchAsync(async (req, res, next) => {
-    const invoice = await Invoice.findByPk(req.params.id);
+    const invoice = await Invoice.findByPk(req.params.id, { include: [InvoicePayment] });
     if (!invoice) {
         return next(new appError('No invoice found with that ID', 404));
     };
@@ -95,7 +96,7 @@ exports.createInvoice = catchAsync(async (req, res, next) => {
 );
 
 exports.updateInvoice = catchAsync(async (req, res, next) => {
-    const invoice = await Invoice.findByPk(req.params.id);
+    const invoice = await Invoice.findByPk(req.params.id, { include: [InvoicePayment] });
     if (!invoice) {
         return next(new appError('No invoice found with that ID', 404));
     }
@@ -111,7 +112,7 @@ exports.updateInvoice = catchAsync(async (req, res, next) => {
 
 
 exports.deleteInvoice = catchAsync(async (req, res, next) => {
-    const invoice = await Invoice.findByPk(req.params.id);
+    const invoice = await Invoice.findByPk(req.params.id, { include: [InvoicePayment] });
     if (!invoice) {
         return next(new appError('No invoice found with that ID', 404));
     }
@@ -125,6 +126,7 @@ exports.deleteInvoice = catchAsync(async (req, res, next) => {
 
 exports.getPatientInvoices = catchAsync(async (req, res, next) => {
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             patientID: req.params.patientID
         }
@@ -140,6 +142,7 @@ exports.getPatientInvoices = catchAsync(async (req, res, next) => {
 
 exports.getPatientPendingInvoices = catchAsync(async (req, res, next) => {
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             patientID: req.params.patientID,
             invoiceStatus: 'unpaid'
@@ -156,6 +159,7 @@ exports.getPatientPendingInvoices = catchAsync(async (req, res, next) => {
 
 exports.getPendingInvoices= catchAsync (async (req, res, next) => {
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             invoiceStatus: 'unpaid'
         }
@@ -170,6 +174,7 @@ exports.getPendingInvoices= catchAsync (async (req, res, next) => {
 
 exports.getPaidInvoices= catchAsync(async (req, res, next) => {
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             invoiceStatus: 'paid'
         }
@@ -189,6 +194,7 @@ exports.getPaidInvoicesbyDate = catchAsync(async (req, res, next) => {
     const endOfDay = new Date(date.setHours(23, 59, 59, 999));
 
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             invoiceStatus: 'paid',
             paimentDate: {
@@ -207,10 +213,10 @@ exports.getPaidInvoicesbyDate = catchAsync(async (req, res, next) => {
 
 exports.searchInvoiceByName= catchAsync( async (req,res,next)=>{
     const invoices = await Invoice.scope('defaultScope').findAll({
-        where:{
+        where: {
             invoiceStatus:req.query.status
         },
-        include:[{model:Patient,
+        include: [InvoicePayment, {model:Patient,
         where:{
             name:{[Op.iLike]: `%${req.query.name}%`},
         }
@@ -248,6 +254,7 @@ exports.searchPaidInvoicesByDateRange = catchAsync(async (req, res, next) => {
     }
 
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: whereClause,
     });
 
@@ -393,6 +400,7 @@ exports.searchPaidInvoicesByDateRange = catchAsync(async (req, res, next) => {
 
 exports.getPendingInvoicesByType = catchAsync(async (req, res, next) => {
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             invoiceStatus: 'unpaid',
             type: req.query.type // Filter by type
@@ -408,6 +416,7 @@ exports.getPendingInvoicesByType = catchAsync(async (req, res, next) => {
 
 exports.getPaidInvoicesByType = catchAsync(async (req, res, next) => {
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             invoiceStatus: 'paid',
             type: req.query.type // Filter by type
@@ -427,6 +436,7 @@ exports.getPaidInvoicesByDateByType = catchAsync(async (req, res, next) => {
     const endOfDay = new Date(date.setHours(23, 59, 59, 999));
 
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             invoiceStatus: 'paid',
             paimentDate: {
@@ -450,7 +460,7 @@ exports.searchInvoiceByNameByType = catchAsync(async (req, res, next) => {
             invoiceStatus: req.query.status,
             type: req.query.type // Filter by type
         },
-        include: [{
+        include: [InvoicePayment, {
             model: Patient,
             where: {
                 name: { [Op.iLike]: `%${req.query.name}%` },
@@ -473,6 +483,7 @@ exports.searchPaidInvoicesByDateRangeByType = catchAsync(async (req, res, next) 
     }
 
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             paimentDate: {
                 [Op.gte]: new Date(startDate).toISOString(),
@@ -501,6 +512,7 @@ exports.getDetailedPaidInvoicesByDateRange = catchAsync(async (req, res, next) =
 
     // First get all invoices within the date range
     const invoices = await Invoice.findAll({
+        include: [InvoicePayment],
         where: {
             paimentDate: {
                 [Op.gte]: new Date(startDate).toISOString(),
@@ -542,3 +554,43 @@ exports.getDetailedPaidInvoicesByDateRange = catchAsync(async (req, res, next) =
 
 
 
+
+exports.addPayment = catchAsync(async (req, res, next) => {
+    const invoiceId = req.params.id;
+    const { amount, date, note, receivedBy } = req.body;
+    
+    // Fetch the invoice
+    const invoice = await Invoice.findByPk(invoiceId);
+    if (!invoice) {
+        return next(new appError('No invoice found with that ID', 404));
+    }
+
+    // Calculate current total paid
+    const payments = await InvoicePayment.findAll({ where: { invoiceID: invoiceId } });
+    let totalPaid = 0;
+    for (let i = 0; i < payments.length; i++) {
+        totalPaid += Number(payments[i].amount);
+    }
+
+    const netAmount = invoice.invoiceAmount - (invoice.remise || 0);
+    const remainingBalance = netAmount - totalPaid;
+
+    // Validate that the new payment doesn't exceed the remaining balance
+    if (Number(amount) > remainingBalance) {
+        return next(new appError(`Payment amount (${amount}) exceeds the remaining balance (${remainingBalance}).`, 400));
+    }
+
+    const payment = await InvoicePayment.create({
+        amount,
+        date,
+        note,
+        receivedBy,
+        invoiceID: invoiceId
+    });
+    res.status(201).json({
+        status: 'success',
+        data: {
+            payment
+        }
+    });
+});
